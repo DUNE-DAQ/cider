@@ -49,6 +49,13 @@ class RenameDalAction(ActionInterface):
         dal.rename(new_name)
         return dal
 
+class CopyDalAction(ActionInterface):
+    def action(self, dal):
+        """
+        Copy object in configuration
+        """
+        self._configuration.add_dal(dal)
+        return dal
 
 class AddDalAction(ActionInterface):
     def action(self, conf_obj_id: str, conf_obj_class: str):
