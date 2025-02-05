@@ -1,5 +1,6 @@
 # Textual imports
 from textual.widget import Widget
+
 # CIDER imports
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.interfaces.actions.action_interfaces import ActionInterface
@@ -23,7 +24,7 @@ class DaqWidget(Widget):
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
 
         self._widget = textual_widget
-        self._configuration = configuration        
+        self._configuration = configuration
         self.get_attribute = GetAttributeAction(self._configuration)
 
         self._actions = {}

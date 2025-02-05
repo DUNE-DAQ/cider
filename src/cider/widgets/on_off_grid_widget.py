@@ -16,6 +16,7 @@ from cider.interfaces.actions.actions import (
     DisableDalAction,
     UpdateDalAction,
 )
+import json
 
 from typing import List, Any, Callable
 
@@ -42,7 +43,6 @@ class OnOffGridWidget(DaqWidget):
         self.enable_disable_attr = enable_disable_attr
         self.grouped_objs = {"AllObjects": object_list}
         self.switched_off_objs: List[bool] = []
-
 
     def group_objs(self, group_method: Callable):
         self.grouped_objs = {}
@@ -153,6 +153,7 @@ class DisableObjectWidget(OnOffGridWidget):
         self,
         configuration: ConfigurationWrapper,
         session_name: str,
+        visibility_config: str,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
@@ -160,7 +161,8 @@ class DisableObjectWidget(OnOffGridWidget):
     ) -> None:
 
         # A bit hacky but makes screen app cleaner
-        disableable_objs = GetDalsOfClassAction(configuration)("Component")
+        disableable_objs = self._read_shifter_config(visibility_config, configuration)
+        
         label_list = [
             [GetAttributeAction(configuration)(obj, "id")] for obj in disableable_objs
         ]
@@ -173,7 +175,7 @@ class DisableObjectWidget(OnOffGridWidget):
             name,
             id,
             classes,
-            disabled, 
+            disabled,
         )
 
         # Here we can just initialise everything in the usual way
@@ -182,4 +184,32 @@ class DisableObjectWidget(OnOffGridWidget):
         self.switched_off_objs = self.get_attribute(
             GetDalObjectAction(self._configuration)(session_name, "Session"), "disabled"
         )
+
+    @classmethod
+    def _read_shifter_config(cls, config_path: str, configuration :ConfigurationWrapper):
+        # Open config
+        with open(config_path, "r") as f:
+            full_config = json.load(f)
         
+        visible_classes = full_config["VisibleClasses"]
+        ignored_classes = full_config["IgnoredClasses"]
+        ignored_objects = full_config["IgnoredObjects"]
+        
+        output_list = []
+        
+        for class_ in visible_classes:
+
+            # We need to grab all DALs with that class
+            dal_objs = GetDalsOfClassAction(configuration)(class_)
+                        
+            for dal in dal_objs:
+                if GetClassNameAction(configuration)(dal) in ignored_classes:
+                    continue
+                
+                if any(s in GetAttributeAction(configuration)(dal, "id") for s in ignored_objects):
+                    continue
+                
+                output_list.append(dal)
+
+
+        return output_list                

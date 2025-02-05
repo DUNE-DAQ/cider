@@ -1,0 +1,7 @@
+{
+"VisibleClasses": ["Component"],
+
+"IgnoredClasses": ["DetectorStream", "ConnectivityService"],
+
+"IgnoredObjects": ["mlt", "hds-np02"]
+}

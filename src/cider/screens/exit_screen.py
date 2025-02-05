@@ -5,9 +5,16 @@ from textual.screen import Screen
 
 class ExitScreen(Screen):
     """Screen with a dialog to quit."""
+
     CSS_PATH = "quit_screen.tcss"
 
-    def __init__(self, message: str, name: str | None = None, id: str | None = None, classes: str | None = None) -> None:        
+    def __init__(
+        self,
+        message: str,
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
+    ) -> None:
         super().__init__(name, id, classes)
         self._message = message
 
@@ -17,7 +24,6 @@ class ExitScreen(Screen):
             # Button("Copy Command", variant="success", id="copy"),
             Button("Yep!", variant="success", id="quit"),
             Button("Nope!", variant="warning", id="cancel"),
-
             id="dialog",
         )
 

@@ -14,10 +14,13 @@ from cider.interfaces.actions.actions import (
 
 from cider.widgets.on_off_grid_widget import DisableObjectWidget, OnOffGridWidget
 from cider.screens.exit_screen import ExitScreen
+import os
 
 class DisableObjectScreen(Screen):
     # Okay lets go
     CSS_PATH = "toggle_screen.tcss"
+
+    VISIBLE_OBJ_PATH = f"{os.path.dirname(os.path.realpath(__file__))}/../configuration/visible_objects.json"
 
     def __init__(
         self,
@@ -46,17 +49,24 @@ class DisableObjectScreen(Screen):
 
     def compose(self):
         # Okay we can sort by class id's
-        yield Static(f"[bold blue]File[/bold blue]: [bold black]{self._configuration.file_name}", classes="table-header")
+        yield Static(
+            f"[bold blue]File[/bold blue]: [bold black]{self._configuration.file_name}",
+            classes="table-header",
+        )
 
         with ScrollableContainer():
-            disable_obj =  DisableObjectWidget(self._configuration, self.session)
-            disable_obj.add_action_sequence("switch_changed", [DisableDalAction(self._configuration), UpdateDalAction(self._configuration)])        
+            disable_obj = DisableObjectWidget(self._configuration, self.session, self.VISIBLE_OBJ_PATH)
+            disable_obj.add_action_sequence(
+                "switch_changed",
+                [
+                    DisableDalAction(self._configuration),
+                    UpdateDalAction(self._configuration),
+                ],
+            )
             yield disable_obj
-        
-        
+
         yield Button("Save Local", id="commit_button", variant="success")
         yield Button("Quit", id="quit_button", variant="error")
 
         yield Header()
         yield Footer()
-
