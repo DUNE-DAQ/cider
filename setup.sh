@@ -5,4 +5,4 @@ export CIDER=$(cd $(dirname ${HERE}) && pwd)
 echo "Setting up CIDER from $CIDER_DIR`"
 cd $CIDER_DIR && pip install -e . && cd -
 # export CIDER_DATA=${CIDER_DIR}/data
-echo "DRUNC setup done"
+echo "CIDER setup done"

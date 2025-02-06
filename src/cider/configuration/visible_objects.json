@@ -1,5 +1,5 @@
 {
-"VisibleClasses": ["Component"],
+"VisibleClasses": ["Segment", "DataFlowApplication"],
 
 "IgnoredClasses": ["DetectorStream", "ConnectivityService"],
 

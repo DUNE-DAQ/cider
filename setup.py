@@ -13,6 +13,6 @@ setup(
         "ipython"
         "black"
     ]},
-    package_data={'': ['*.tcss']},
+    package_data={'': ['*.tcss', '*.json']},
 )
  
