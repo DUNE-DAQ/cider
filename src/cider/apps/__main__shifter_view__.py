@@ -10,6 +10,7 @@ import click
 from rich import print
 
 import os
+from pathlib import Path
 
 
 class ShifterView(App):
@@ -18,6 +19,7 @@ class ShifterView(App):
     def __init__(
         self,
         configuration_folder: str,
+        interface_config: str = "",
         driver_class: type[Driver] | None = None,
         css_path: str | None = None,
         watch_css: bool = False,
@@ -26,6 +28,7 @@ class ShifterView(App):
         super().__init__(driver_class, css_path, watch_css, ansi_color)
 
         self._configuration_folder = configuration_folder
+        self._interface_config = interface_config
         self._exit_message = ""
 
     def exit_message(self):
@@ -35,7 +38,9 @@ class ShifterView(App):
         self.theme = "catppuccin-latte"
 
         self.install_screen(
-            ShifterViewScreen(self._configuration_folder),
+            ShifterViewScreen(
+                self._configuration_folder, interface_config=self._interface_config
+            ),
             name="shifter_view_screen",
         )
         # Start with the SelectFileSessionScreen
@@ -46,11 +51,19 @@ class ShifterView(App):
         self._exit_message = message
         super().exit()  # Call the original exit method
 
+
 @click.command()
 @click.option("-d", "--input-directory", "input_directory", default="", required=True)
-def main(input_directory):
+@click.option(
+    "-c",
+    "--interface_config",
+    "interface_config",
+    default=f"{Path(__file__).parent.absolute()}/../configuration/np02_configuration.yml",
+    required=False,
+)
+def main(input_directory, interface_config):
     # CONFIGURATION_PATH = "/home/hwallace/scratch/dune_software/daq/daq_work_areas/NFD_DEV_241218_A9/nd_generated_file/"
 
-    app = ShifterView(input_directory)
+    app = ShifterView(input_directory, interface_config)
     app.run()
     print(app.exit_message())

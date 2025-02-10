@@ -56,31 +56,41 @@ class TriggerPanel(__EnableDisablePanel):
             return {}
 
         session = ca.GetDalObjectAction(self._configuration)(
-            self._session_name, "Session")
+            self._session_name, "Session"
+        )
+        
+        output_map = self._attribute_map.copy()
+
 
         # This one is nice and simple!
-        for trigger_info in self._attribute_map.values():
+        for trigger_label, trigger_info in self._attribute_map.items():
 
             class_name = trigger_info["class_name"]
             trigger_name = trigger_info["attribute_name"]
             object_names = trigger_info["object_names"]
 
             # Quick consistency check
-            current_states = GetAttributeValueSessionAction(self._configuration)(session, class_name, trigger_name, object_names)
+            current_states = GetAttributeValueSessionAction(self._configuration)(
+                session, class_name, trigger_name, object_names
+            )
 
-            enabled_state = trigger_info.get("enabled_state" , True)
-            disabled_state = trigger_info.get("disabled_state" , True)
-        
-            if not all(s==current_states[0] for s in current_states):
-                init_state = enabled_state
-            elif current_states[0] != enabled_state or current_states[0] != disabled_state:
+            enabled_state = trigger_info.get("enabled_state", True)
+            disabled_state = trigger_info.get("disabled_state", True)
+
+            if not current_states:
+                output_map.pop(trigger_label)
+                continue
+
+            if (not all(s == current_states[0] for s in current_states)
+                or current_states[0] not in {enabled_state, disabled_state}
+            ):
                 init_state = enabled_state
             else:
                 init_state = current_states[0]
-            
+
             # Set initial state of trigger
             trigger_info["enabled"] = init_state
-        
+
             # This should be None
             object_names = trigger_info["object_names"]
 
@@ -91,9 +101,8 @@ class TriggerPanel(__EnableDisablePanel):
             SetAttributeValueSessionAction(self._configuration).action(
                 session, class_name, trigger_name, trigger_info["enabled"], object_names
             )
-            
 
-        return self._attribute_map
+        return output_map
 
     def check_is_disabled(self, button: str, _) -> bool:
         return not self._button_list.get(button, False)["enabled"]
@@ -116,7 +125,7 @@ class TriggerPanel(__EnableDisablePanel):
             objs_affected["enabled"] = objs_affected.get("disabled_state", False)
         else:
             objs_affected["enabled"] = objs_affected.get("enabled_state", True)
-        
+
         session = ca.GetDalObjectAction(self._configuration)(
             self._session_name, "Session"
         )

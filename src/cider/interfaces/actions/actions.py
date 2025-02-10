@@ -1,6 +1,7 @@
 from cider.interfaces.actions.action_interfaces import ActionInterface
 import shutil
 
+
 # Chainable actions
 class GetDalObjectAction(ActionInterface):
     def action(self, conf_obj_id: str, conf_obj_class: str):
@@ -57,16 +58,15 @@ class CopyDalAction(ActionInterface):
         """
         self._configuration.add_dal(dal)
         return dal
-    
+
+
 class CopyFullConfigurationAction(ActionInterface):
     def action(self, new_file_name):
         """
         Copy full configuration
         """
         CommitConfigurationAction(self._configuration)()
-        shutil.copyfile(
-            f"{self._configuration.file_name}", new_file_name
-        )
+        shutil.copyfile(f"{self._configuration.file_name}", new_file_name)
 
 
 class AddDalAction(ActionInterface):

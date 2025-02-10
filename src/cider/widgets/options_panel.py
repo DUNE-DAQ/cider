@@ -9,7 +9,6 @@ from textual.visual import SupportsVisual
 from textual.widgets import Button, Static
 
 
-
 class OptionPanel(Static):
     def __init__(
         self,
@@ -66,14 +65,21 @@ class OptionPanel(Static):
             self.app.push_screen(HelpScreen(classes="pop_up_screen"))
         elif event.button.id == "save_and_copy_button":
             if self._configuration is not None and self._session_name:
-                ca.CopyFullConfigurationAction(self._configuration)('current_config.data.xml')
+                ca.CopyFullConfigurationAction(self._configuration)(
+                    "current_config.data.xml"
+                )
         elif event.button.id == "save_to_database_button":
             pass
         elif event.button.id == "undo_changes_button":
             # Reset everything!
             self.app.get_screen("shifter_view_screen").open_new_file()
         elif event.button.id == "quit_button":
-            self.app.push_screen(QuitScreen(self._session_name, ConfigurationWrapper('current_config.data.xml'),
-                                            classes="pop_up_screen"))
+            self.app.push_screen(
+                QuitScreen(
+                    self._session_name,
+                    ConfigurationWrapper("current_config.data.xml"),
+                    classes="pop_up_screen",
+                )
+            )
         else:
             pass

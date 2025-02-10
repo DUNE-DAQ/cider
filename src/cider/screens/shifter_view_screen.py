@@ -13,57 +13,10 @@ from cider.utils.consolidate_file import ConsolidateFile
 
 from pathlib import Path
 import os
+import yaml
 
 
 class ShifterViewScreen(Screen):
-
-    TRIGGER_MAP = {
-        "TPG Enabled": {
-            "attribute_name": "tp_generation_enabled",
-            "class_name": "ReadoutApplication",
-            "object_names": None,
-            "enabled": True,
-            "enabled_state": True,
-            "disabled_state": False,
-
-        },
-        "TPA Enabled": {
-            "attribute_name": "ta_generation_enabled",
-            "class_name": "ReadoutApplication",
-            "object_names": None,
-            "enabled": True,
-            "enabled_state": True,
-            "disabled_state": False,
-
-        },
-    }
-
-    DETECTOR_SYSTEM_MAP = {
-        "CRP4": {
-            "subsystems": [
-                {
-                    "type": "component",
-                    "class": "Segment",
-                    "id": "crp4-segment",
-                    "enabled_state": True,
-                    "disabled_state": False,
-                }
-            ],
-            "enabled": True,
-        },
-        "CRP5": {
-            "subsystems": [
-                {
-                    "type": "component",
-                    "class": "Segment",
-                    "id": "crp5-segment",
-                    "enabled_state": True,
-                    "disabled_state": False,
-                }
-            ],
-            "enabled": True,
-        },
-    }
 
     TMP_CONFIG = Path(f"/tmp/shifter_configs-{os.getlogin()}/tmp_config.data.xml")
 
@@ -72,11 +25,18 @@ class ShifterViewScreen(Screen):
     def __init__(
         self,
         config_folder: str,
+        interface_config: str = "../configuration/np02_configuration.yml",
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name, id, classes)
+
+        with open(interface_config, "r") as f:
+            interface_conf_file = yaml.safe_load(f)
+
+            self.detector_system_map = interface_conf_file["DetectorSystemMap"]
+            self.trigger_map = interface_conf_file["TriggerMap"]
 
         self._config_folder = config_folder
 
@@ -86,14 +46,14 @@ class ShifterViewScreen(Screen):
         with TabbedContent(id="selection_tabs"):
             with TabPane("Detector Subsystem", id="detector_subsystem_tab"):
                 yield MultiComponentEnableDisablePanel(
-                    None, None, self.DETECTOR_SYSTEM_MAP, id="detector_subsystem_panel"
+                    None, None, self.detector_system_map, id="detector_subsystem_panel"
                 )
             with TabPane("Dataflow Apps", id="dataflow_apps_tab"):
                 yield SingleComponentEnableDisablePanel(
                     None, None, ["DFApplication"], id="dataflow_subsystem_panel"
                 )
             with TabPane("Trigger", id="enable_trigger_tab"):
-                yield TriggerPanel(None, None, self.TRIGGER_MAP, id="trigger_panel")
+                yield TriggerPanel(None, None, self.trigger_map, id="trigger_panel")
 
         yield OptionPanel(None, "", id="option_panel")
 

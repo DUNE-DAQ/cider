@@ -1,0 +1,33 @@
+TriggerMap:
+  TPG Enabled:
+    attribute_name: tp_generation_enabled
+    class_name: ReadoutApplication
+    object_names: null
+    enabled: true
+    enabled_state: true
+    disabled_state: false
+  TPA Enabled:
+    attribute_name: ta_generation_enabled
+    class_name: ReadoutApplication
+    object_names: null
+    enabled: true
+    enabled_state: true
+    disabled_state: false
+
+DetectorSystemMap:
+  CRP4:
+    subsystems:
+      - type: component
+        class: Segment
+        id: crp4-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true
+  CRP5:
+    subsystems:
+      - type: component
+        class: Segment
+        id: crp5-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true
