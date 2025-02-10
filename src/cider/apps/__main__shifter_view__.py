@@ -57,6 +57,9 @@ class ShifterView(App):
         self._exit_message = message
         super().exit()  # Call the original exit method
 
+    def exit_message(self) -> str:
+        """Return the exit message."""
+        return self._exit_message
 
 @click.command()
 @click.option("-d", "--input-directory", "input_directory", default="", required=True)

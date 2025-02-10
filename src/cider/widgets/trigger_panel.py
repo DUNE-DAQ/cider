@@ -1,5 +1,5 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-from cider.widgets.enable_disable_base import __EnableDisablePanel
+from cider.widgets.enable_disable_base import EnableDisablePanel
 from cider.interfaces.workflows.get_set_session_attribute import (
     SetAttributeValueSessionAction,
     GetAttributeValueSessionAction,
@@ -10,7 +10,7 @@ from textual.visual import SupportsVisual
 from textual.widgets import Button
 
 
-class TriggerPanel(__EnableDisablePanel):
+class TriggerPanel(EnableDisablePanel):
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,
@@ -107,11 +107,7 @@ class TriggerPanel(__EnableDisablePanel):
     def check_is_disabled(self, button: str, _) -> bool:
         return not self._button_list.get(button, False)["enabled"]
 
-    def on_button_pressed(self, event: Button.Pressed):
-        button_name = event.button.id.replace("_button", "")
-        button_name = button_name.replace("_", " ")
-
-        objs_affected = self._button_list.get(button_name, None)
+    def _button_action(self, objs_affected, button_name):
 
         if objs_affected is None:
             return
@@ -137,4 +133,3 @@ class TriggerPanel(__EnableDisablePanel):
             objs_affected["enabled"],
             object_names,
         )
-        self.refresh(recompose=True)

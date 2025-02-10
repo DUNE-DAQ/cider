@@ -31,3 +31,38 @@ DetectorSystemMap:
         enabled_state: true
         disabled_state: false
     enabled: true
+
+  APA 1:
+    subsystems:
+      - type: component
+        class: Segment
+        id: apa1-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true
+
+  APA 2:
+    subsystems:
+      - type: component
+        class: Segment
+        id: apa2-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true
+  APA 3:
+    subsystems:
+      - type: component
+        class: Segment
+        id: apa3-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true
+
+  APA 4:
+    subsystems:
+      - type: component
+        class: Segment
+        id: apa4-segment
+        enabled_state: true
+        disabled_state: false
+    enabled: true

@@ -73,6 +73,7 @@ class ShifterViewScreen(Screen):
         '''
         if event.button.id == "open_file_button":
             try:
+
                 self.open_new_file()
             except Exception as e:
                 raise e
@@ -98,7 +99,12 @@ class ShifterViewScreen(Screen):
         self.query_one(OptionPanel).open_new_session(buffer_config, session_name)
 
         if not session_name or not buffer_config:
-            return
-
-        for a in self.query("__EnableDisablePanel"):
-            a.open_new_session(buffer_config, session_name)
+            pass
+        
+        for a in self.query("EnableDisablePanel"):
+            a.open_new_session(buffer_config, session_name)            
+            a.refresh(recompose=True)
+            
+    def on_enable_disable_panel_changed(self, message):
+        for a in self.query("EnableDisablePanel"):
+            a.refresh(recompose=True)

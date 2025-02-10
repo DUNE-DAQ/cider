@@ -67,16 +67,26 @@ FileIOPanel{
     margin: 1 3;
 }
 
+#schematic_view_panel{
+    width: 100%;
+    column-span: 14;
+    background: $background 10%;
+}
+
+#schematic_view{
+    width: 100%;
+}
+
 /* Options panel */
 #option_panel{
     column-span: 1;
     row-span: 5;
-    padding: 1;
+    padding: 2;
 }
 
 
 .options_button{
-    width: 80%;
+    width: 100%;
     height: auto; /* Allow the label to size itself */
     margin: 1 3;
 }

@@ -1,5 +1,5 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-from cider.widgets.enable_disable_base import __EnableDisablePanel
+from cider.widgets.enable_disable_base import EnableDisablePanel
 
 
 import cider.interfaces.actions.actions as ca
@@ -9,7 +9,7 @@ from textual.widgets import Button
 from typing import List, Dict
 
 
-class SingleComponentEnableDisablePanel(__EnableDisablePanel):
+class SingleComponentEnableDisablePanel(EnableDisablePanel):
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,
@@ -61,12 +61,7 @@ class SingleComponentEnableDisablePanel(__EnableDisablePanel):
             for b in buttons
         }
 
-    def on_button_pressed(self, event: Button.Pressed):
-        button_name = event.button.id.replace("_button", "")
-        class_name = self._button_list.get(button_name, None)
-
-        if class_name is None:
-            return
+    def _button_action(self, class_name, button_name):
 
         dal = ca.GetDalObjectAction(self._configuration)(button_name, class_name)
         session_dal = ca.GetDalObjectAction(self._configuration)(
@@ -81,7 +76,6 @@ class SingleComponentEnableDisablePanel(__EnableDisablePanel):
 
         ca.UpdateDalAction(self._configuration)(session_dal)
 
-        self.refresh(recompose=True)
 
     def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
         dal = ca.GetDalObjectAction(self._configuration)(button, information)

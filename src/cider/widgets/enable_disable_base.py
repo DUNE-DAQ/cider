@@ -1,18 +1,21 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 import cider.interfaces.actions.actions as ca
+from cider.utils.daq_conf_tree import DaqConfTree
 
+from textual.geometry import Region
 from textual.visual import SupportsVisual
 from textual.widgets import Static, Placeholder, Button
 from textual.containers import Grid, ScrollableContainer
-
+from textual.message import Message
 from typing import List
 
 
-class __EnableDisablePanel(Static):
+class EnableDisablePanel(Static):
     
     '''
     Base class for all of the enable/disable button panel
     '''
+    
     
     def __init__(
         self,
@@ -43,37 +46,20 @@ class __EnableDisablePanel(Static):
         self._session_name = session_name
         self._button_list = self.generate_button_list()
 
+
     @property
     def configuration(self) -> ConfigurationWrapper | None:
         return self._configuration
-
-    @configuration.setter
-    def configuration(self, configuration: ConfigurationWrapper | None):
-        self._configuration = configuration
-        try:
-            self._button_list = self.generate_button_list()
-            self.refresh(recompose=True)
-        except Exception as e:
-            raise e
 
     @property
     def session_name(self) -> str | None:
         return self._session_name
 
-    @session_name.setter
-    def session_name(self, session_name: str):
-        try:
-            self._session_name = session_name
-            self._button_list = self.generate_button_list()
-            self.refresh(recompose=True)
-        except Exception as e:
-            raise e
-
     def open_new_session(self, configuration: ConfigurationWrapper, session_name: str):
         self._session_name = session_name
         self._configuration = configuration
-        self._button_list = self.generate_button_list()
-        self.refresh(recompose=True)
+        self._button_list = self.generate_button_list()        
+        self.post_message(self.Changed())
 
     def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
         return True
@@ -95,7 +81,30 @@ class __EnableDisablePanel(Static):
 
                     yield Button(name_str, id=f"{id_name}_button", classes=classes)
 
-            yield Placeholder("Schematic View", id="schematic_view")
+            with ScrollableContainer(id="schematic_view_panel"):
+                yield Static(DaqConfTree(self.configuration, self._session_name).print_tree(), id="schematic_view", markup=True)
 
+
+    def on_button_pressed(self, event: Button.Pressed):
+        button_name = event.button.id.replace("_button", "")
+        
+        button_name = button_name.replace("_", " ")
+        objs_affected = self._button_list.get(button_name, None)
+
+        if objs_affected is None:
+            return
+
+        self._button_action(objs_affected, button_name)
+        self.post_message(self.Changed())
+        # self.refresh(recompose=True)
+        
+    def _button_action(self, objs_affected, button_name):
+        pass
+        
     def generate_button_list(self):
         return {}
+    
+    class Changed(Message):
+        """Custom message to notify when a button is pressed."""
+        def __init__(self) -> None:
+            super().__init__()

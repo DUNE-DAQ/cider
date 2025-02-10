@@ -1,5 +1,5 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-from cider.widgets.enable_disable_base import __EnableDisablePanel
+from cider.widgets.enable_disable_base import EnableDisablePanel
 from cider.interfaces.workflows.get_set_session_attribute import (
     SetAttributeValueSessionAction,
     GetAttributeValueSessionAction,
@@ -12,7 +12,7 @@ from textual.widgets import Button
 from typing import Dict
 
 
-class MultiComponentEnableDisablePanel(__EnableDisablePanel):
+class MultiComponentEnableDisablePanel(EnableDisablePanel):
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,
@@ -126,17 +126,20 @@ class MultiComponentEnableDisablePanel(__EnableDisablePanel):
         We want to be able to check the initial state of a subsytem, if all objects in it are in some
         basic initial state we can safely set enable/disable
         """
+        try:
+            attrs = [
+                self.get_subsystem_disabled(subsystem)
+                for subsystem in system_dict["subsystems"]
+            ]
 
-        attrs = [
-            self.get_subsystem_disabled(subsystem)
-            for subsystem in system_dict["subsystems"]
-        ]
+            if all(a == attrs[0] and attrs[0] for a in attrs) and attrs[0] is not None:
+                return not attrs[0]
 
-        if all(a == attrs[0] and attrs[0] for a in attrs) and attrs[0] is not None:
-            return not attrs[0]
+            # Return some default value
+            return system_dict["enabled"]
 
-        # Return some default value
-        return system_dict["enabled"]
+        except:
+            return system_dict["enabled"]
 
     def get_subsystem_disabled(self, subsystem: Dict[str, str]) -> bool | None:
         class_name = subsystem["class"]
@@ -165,21 +168,13 @@ class MultiComponentEnableDisablePanel(__EnableDisablePanel):
                 == subsystem["disabled_state"]
             )
 
-    def on_button_pressed(self, event: Button.Pressed):
-        button_name = event.button.id.replace("_button", "")
-        system_info = self._button_list.get(button_name, None)
-
-        if system_info is None:
-            return
-
+    def _button_action(self, system_info, _):
         system_info["enabled"] = not system_info["enabled"]
         session_dal = ca.GetDalObjectAction(self._configuration)(
             self._session_name, "Session"
         )
 
         self.initialise_subsystem(session_dal, system_info)
-
-        self.refresh(recompose=True)
 
     def check_is_disabled(self, button: str, _) -> bool:
         return not self._button_list.get(button, False)["enabled"]
