@@ -1,17 +1,20 @@
 # APPLE: Accessible Platform for Plain and Lightweight Editing
 
 from cider.screens.shifter_view_screen import ShifterViewScreen
+from cider.screens.quit_screen import QuitScreen
 
 from textual.app import App
 from textual.driver import Driver
 from textual.binding import Binding
 import click
+from rich import print
 
 import os
 
+
 class ShifterView(App):
-    CSS_PATH="shifter_view.tcss"
-    
+    CSS_PATH = "shifter_view.tcss"
+
     def __init__(
         self,
         configuration_folder: str,
@@ -33,17 +36,15 @@ class ShifterView(App):
 
         self.install_screen(
             ShifterViewScreen(self._configuration_folder),
-            name="main",
+            name="shifter_view_screen",
         )
-
         # Start with the SelectFileSessionScreen
-        self.push_screen("main")
+        self.push_screen("shifter_view_screen")
 
     def exit(self, message: str | None = None) -> None:
         """Override the exit method to store the exit message."""
         self._exit_message = message
         super().exit()  # Call the original exit method
-
 
 @click.command()
 @click.option("-d", "--input-directory", "input_directory", default="", required=True)
@@ -52,5 +53,4 @@ def main(input_directory):
 
     app = ShifterView(input_directory)
     app.run()
-    print("To run DRUNC please copy/paste: ")
     print(app.exit_message())

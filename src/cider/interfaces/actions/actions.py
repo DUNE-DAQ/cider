@@ -1,5 +1,5 @@
 from cider.interfaces.actions.action_interfaces import ActionInterface
-
+import shutil
 
 # Chainable actions
 class GetDalObjectAction(ActionInterface):
@@ -57,6 +57,16 @@ class CopyDalAction(ActionInterface):
         """
         self._configuration.add_dal(dal)
         return dal
+    
+class CopyFullConfigurationAction(ActionInterface):
+    def action(self, new_file_name):
+        """
+        Copy full configuration
+        """
+        CommitConfigurationAction(self._configuration)()
+        shutil.copyfile(
+            f"{self._configuration.file_name}", new_file_name
+        )
 
 
 class AddDalAction(ActionInterface):
@@ -154,3 +164,9 @@ class GetClassNameAction(ActionInterface):
         Get name of DAL class
         """
         return dal.className()
+
+
+class CheckIsDisabledAction(ActionInterface):
+    def action(self, dal, session_name) -> bool:
+        session_dal = GetDalObjectAction(self._configuration)(session_name, "Session")
+        return dal in GetAttributeAction(self._configuration)(session_dal, "disabled")
