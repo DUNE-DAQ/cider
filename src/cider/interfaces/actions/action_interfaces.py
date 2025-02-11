@@ -16,9 +16,10 @@ from typing import Dict, List
 
 
 class ActionInterface(ABC):
-    '''
+    """
     Generic interface defining an abstract action
-    '''
+    """
+
     def __init__(self, configuration: ConfigurationWrapper):
         self._configuration = configuration
 

@@ -31,14 +31,19 @@ class QuitScreen(Screen):
         return f"[purple]To run[/purple] [bold blue]DRUNC[/bold blue] [purple]please copy/paste:[/purple]\n[bold green]drunc-unified-shell ssh-standalone {self._configuration.file_name} {self._session_name}"
 
     def compose(self):
+        button_disabled = self._configuration is None or self._session_name is None
+
         yield Grid(
             Label(f"[bold]Are you happy with the config?", id="quit_question"),
             # Button("Copy Command", variant="success", id="copy"),
+            
+            
             Button(
                 "Quit and Save",
                 variant="success",
                 id="quit_screen_savequit_button",
                 classes="pop_up_button quit_screen_button",
+                disabled=button_disabled,
             ),
             Button(
                 "Quit Without Saving",
@@ -50,7 +55,7 @@ class QuitScreen(Screen):
                 "Cancel",
                 variant="error",
                 id="quit_screen_cancel_button",
-            classes="pop_up_button quit_screen_button",
+                classes="pop_up_button quit_screen_button",
             ),
             id="quit_dialog",
             classes="pop_up quit_pop_up",
@@ -59,7 +64,9 @@ class QuitScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "quit_screen_savequit_button":
             try:
-                ca.CopyFullConfigurationAction(self._configuration)(self._new_configuration_name)
+                ca.CopyFullConfigurationAction(self._configuration)(
+                    self._new_configuration_name
+                )
             except:
                 pass
 

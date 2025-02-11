@@ -2,10 +2,11 @@ from cider.interfaces.actions.action_interfaces import ActionInterface
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 import shutil
 
-'''
+"""
 A collection of simple actions on a configuration. These should take a single configuration
 and then be able to repeatedly perform a single operation on it
-'''
+"""
+
 
 # Chainable actions
 class GetDalObjectAction(ActionInterface):
@@ -27,6 +28,14 @@ class ChangeAttributeAction(ActionInterface):
         setattr(dal, attr_name, attr_value)
         return dal
 
+
+class UnloadConfigurationAction(ActionInterface):
+    def action(self):
+        """
+        Unload configuration
+        """
+        self._configuration.unload()
+        return None
 
 class UpdateDalAction(ActionInterface):
     """
@@ -173,12 +182,12 @@ class GetClassNameAction(ActionInterface):
 
 
 class CheckIsDisabledAction(ActionInterface):
-    '''
+    """
     Check if DAL is disabled
-    '''
+    """
+
     def action(self, dal, session_name) -> bool:
         session_dal = GetDalObjectAction(self._configuration)(session_name, "Session")
-        
 
         attr_getter = GetAttributeAction(self._configuration)
         disabled_items = attr_getter(session_dal, "disabled")
@@ -187,7 +196,9 @@ class CheckIsDisabledAction(ActionInterface):
 
         # Annoyingly doing dal_A == dal_B doesn't work...
         for obj in disabled_items:
-            if attr_getter(dal, 'id') == attr_getter(obj, 'id') and class_name(dal) == class_name(obj):
+            if attr_getter(dal, "id") == attr_getter(obj, "id") and class_name(
+                dal
+            ) == class_name(obj):
                 return True
-            
+
         return False

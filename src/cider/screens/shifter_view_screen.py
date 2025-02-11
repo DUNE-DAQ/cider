@@ -1,5 +1,5 @@
 from textual.screen import Screen
-from textual.containers import Grid
+from textual.containers import ScrollableContainer
 from textual.widgets import TabbedContent, TabPane, Header, Footer, Button
 from textual import on
 
@@ -22,13 +22,14 @@ class ShifterViewScreen(Screen):
 
     changed_session = False
 
-    '''
+    """
     Main shifter view, thid is the main screen that the shifter will see
-    '''
+    """
 
     def __init__(
         self,
         config_folder: str,
+        output_directory: str,
         interface_config: str = "../configuration/np02_configuration.yml",
         name: str | None = None,
         id: str | None = None,
@@ -43,34 +44,56 @@ class ShifterViewScreen(Screen):
             self.trigger_map = interface_conf_file["TriggerMap"]
 
         self._config_folder = config_folder
+        self._output_directory = output_directory
 
     def compose(self):
-        '''
+        """
         Generate the screen layout
-        '''
-        yield FileIOPanel(self._config_folder, id="file_io_panel")
+        """
+        with ScrollableContainer(id="main_container"):
+            yield FileIOPanel(self._config_folder, id="file_io_panel")
 
-        with TabbedContent(id="selection_tabs"):
-            with TabPane("Detector Subsystem", id="detector_subsystem_tab"):
-                yield MultiComponentEnableDisablePanel(
-                    None, None, self.detector_system_map, id="detector_subsystem_panel", classes="detector_subsystem"
-                )
-            with TabPane("Dataflow Apps", id="dataflow_apps_tab"):
-                yield SingleComponentEnableDisablePanel(
-                    None, None, ["DFApplication"], id="dataflow_subsystem_panel", classes="detector_subsystem"
-                )
-            with TabPane("Trigger", id="enable_trigger_tab"):
-                yield TriggerPanel(None, None, self.trigger_map, id="trigger_panel", classes="detector_subsystem")
+            with TabbedContent(id="selection_tabs"):
+                with TabPane("Detector Subsystem", id="detector_subsystem_tab"):
+                    yield MultiComponentEnableDisablePanel(
+                        None,
+                        None,
+                        self.detector_system_map,
+                        id="detector_subsystem_panel",
+                        classes="detector_subsystem",
+                    )
+                with TabPane("Dataflow Apps", id="dataflow_apps_tab"):
+                    yield SingleComponentEnableDisablePanel(
+                        None,
+                        None,
+                        ["DFApplication"],
+                        id="dataflow_subsystem_panel",
+                        classes="detector_subsystem",
+                    )
+                with TabPane("Trigger", id="enable_trigger_tab"):
+                    yield TriggerPanel(
+                        None,
+                        None,
+                        self.trigger_map,
+                        id="trigger_panel",
+                        classes="detector_subsystem",
+                    )
 
-        yield OptionPanel(None, None, id="option_panel_main", classes="options_panel")
+            yield OptionPanel(
+                None,
+                None,
+                self._output_directory,
+                id="option_panel_main",
+                classes="options_panel",
+            )
 
         yield Header()
         yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed):
-        '''
+        """
         For simplicity this button's functionality is accessible at the screen level
-        '''
+        """
         if event.button.id == "open_file_button":
             try:
                 self.open_new_file()
@@ -81,20 +104,19 @@ class ShifterViewScreen(Screen):
     def deconfigure(self):
         self.query_one(OptionPanel).open_new_session(None, None)
         for a in self.query("EnableDisablePanel"):
-            a.open_new_session(None, None)            
+            a.open_new_session(None, None)
             a.refresh(recompose=True)
 
     def open_new_file(self):
-        '''
+        """
         Open a new file is the only cross-app interface
-        '''
+        """
         session_name = self.query_one(FileIOPanel).selected_session_name
         original_configuration = self.query_one(FileIOPanel).selected_config_name
 
         self.TMP_CONFIG.parent.mkdir(parents=True, exist_ok=True)
 
         # Now we make a temporary copy of the configuration object
-
         ConsolidateFile(
             original_configuration, session_name, "Session", str(self.TMP_CONFIG)
         )()
@@ -106,11 +128,11 @@ class ShifterViewScreen(Screen):
 
         if not session_name or not buffer_config:
             pass
-        
+
         for a in self.query("EnableDisablePanel"):
-            a.open_new_session(buffer_config, session_name)            
+            a.open_new_session(buffer_config, session_name)
             a.refresh(recompose=True)
-            
+
     def on_enable_disable_panel_changed(self, message):
         for a in self.query("EnableDisablePanel"):
             a.refresh(recompose=True)

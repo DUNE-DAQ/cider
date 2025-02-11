@@ -8,11 +8,6 @@ setup(
         "textual_dev",
         "rich",
     ],
-    extras_require={"develop": [
-        "ipdb",
-        "ipython"
-        "black"
-    ]},
-    package_data={'': ['*.tcss', '*.json']},
+    extras_require={"develop": ["ipdb", "ipython" "black"]},
+    package_data={"": ["*.tcss", "*.json"]},
 )
- 

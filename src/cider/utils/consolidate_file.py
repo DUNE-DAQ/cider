@@ -8,6 +8,7 @@ from cider.interfaces.actions.actions import (
 
 import datetime
 import sys
+import os
 from typing import Any, List, Dict
 
 
@@ -25,6 +26,9 @@ class ConsolidateFile:
 
         self._current_config_name = current_config_name
         self._new_config_name = new_config_name
+
+        if os.path.isfile(f"{self._new_config_name}"):
+            os.remove(f"{self._new_config_name}")
 
     def get_generated_config(self):
         return self._new_config_name
@@ -69,7 +73,6 @@ class ConsolidateFile:
         related_objs = self.__populate_configuration(
             current_configuration, top_level_dal
         )
-        print(related_objs)
 
         # Now we just need to make sure everything's unique
         related_objs = list(set(related_objs))

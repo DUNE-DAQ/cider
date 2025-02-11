@@ -5,10 +5,11 @@ import conffwk
 
 
 class ConfigurationWrapper(conffwk.Configuration):
-    '''
+    """
     Small wrapper layer around the configuration. In principal this allows configuration interface
     to be extended. Currently it just removes the need to add oksconflibs: to a file
-    '''
+    """
+
     def __init__(self, configuration_file_path: str):
         super().__init__(f"oksconflibs:{configuration_file_path}")
 

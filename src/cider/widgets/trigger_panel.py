@@ -52,6 +52,7 @@ class TriggerPanel(EnableDisablePanel):
             disabled=disabled,
         )
 
+
         self._attribute_map = attribute_map
 
     def generate_button_list(self):
@@ -61,9 +62,8 @@ class TriggerPanel(EnableDisablePanel):
         session = ca.GetDalObjectAction(self._configuration)(
             self._session_name, "Session"
         )
-        
-        output_map = self._attribute_map.copy()
 
+        output_map = self._attribute_map.copy()
 
         # This one is nice and simple!
         for trigger_label, trigger_info in self._attribute_map.items():
@@ -84,9 +84,9 @@ class TriggerPanel(EnableDisablePanel):
                 output_map.pop(trigger_label)
                 continue
 
-            if (not all(s == current_states[0] for s in current_states)
-                or current_states[0] not in {enabled_state, disabled_state}
-            ):
+            if not all(
+                s == current_states[0] for s in current_states
+            ) or current_states[0] not in {enabled_state, disabled_state}:
                 init_state = enabled_state
             else:
                 init_state = current_states[0]
@@ -136,7 +136,9 @@ class TriggerPanel(EnableDisablePanel):
             objs_affected["enabled"],
             object_names,
         )
-        
+
     def generate_display_tree(self):
         disabled_objects = super().generate_display_tree().disabled_objs
-        return TriggerTree(self._configuration, self._session_name, self._button_list, disabled_objects)
+        return TriggerTree(
+            self._configuration, self._session_name, self._button_list, disabled_objects
+        )

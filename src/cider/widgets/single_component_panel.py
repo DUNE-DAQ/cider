@@ -76,7 +76,6 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
 
         ca.UpdateDalAction(self._configuration)(session_dal)
 
-
     def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
         dal = ca.GetDalObjectAction(self._configuration)(button, information)
         return ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name)

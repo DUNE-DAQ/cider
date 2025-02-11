@@ -10,7 +10,7 @@ import cider.interfaces.actions.actions as ca
 from textual.visual import SupportsVisual
 from textual.widgets import Button
 from typing import Dict
-
+from copy import deepcopy
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
     def __init__(
@@ -66,6 +66,7 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         }
         """
 
+
         # Make a dict
         self._object_list = object_list
 
@@ -76,23 +77,67 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         session = ca.GetDalObjectAction(self._configuration)(
             self._session_name, "Session"
         )
-
+ 
         # Copy to ensure we don't modify the original
-        output_dict = self._object_list.copy()
+        output_dict = deepcopy(self._object_list)
 
         for system_name, system_info in self._object_list.items():
-            self._object_list[system_name]["enabled"] = self.check_initial_state(
-                system_info
-            )
 
             try:
-                self.initialise_subsystem(session, system_info)
+                output_dict[system_name]["enabled"] = self.check_initial_state(
+                    system_info.copy()
+                )
+                
+                self.initialise_subsystem(session, system_info.copy())
             except:
                 # Can't find so don't add
                 output_dict.pop(system_name)
                 continue
 
         return output_dict
+
+    def check_initial_state(self, system_dict):
+        """
+        We want to be able to check the initial state of a subsytem, if all objects in it are in some
+        basic initial state we can safely set enable/disable
+        """
+        attrs = [
+            self.get_subsystem_disabled(subsystem)
+            for subsystem in system_dict["subsystems"]
+        ]
+
+        if all(a == attrs[0] and attrs[0] for a in attrs) and attrs[0] is not None:
+            return not attrs[0]
+
+        # Return some default value
+        return system_dict["enabled"]
+
+
+    def get_subsystem_disabled(self, subsystem: Dict[str, str]) -> bool | None:
+        class_name = subsystem["class"]
+        name = subsystem["id"]
+
+        if subsystem["type"] == "attribute":
+            affected_objects = subsystem["affected_objects"]
+
+            current_states = GetAttributeValueSessionAction(self._configuration)(
+                self._session_name, class_name, name, affected_objects
+            )
+            if not all([c == current_states[0] for c in current_states]):
+                return None
+
+            if current_states[0] == subsystem["enabled_state"]:
+                return False
+            elif current_states[0] == subsystem["disabled_state"]:
+                return True
+            else:
+                return None
+
+        else:
+            dal = ca.GetDalObjectAction(self._configuration)(name, class_name)
+            return ca.CheckIsDisabledAction(self._configuration)(
+                dal, self._session_name
+            )
 
     def initialise_subsystem(self, session, system_info):
 
@@ -121,52 +166,7 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
 
         ca.UpdateDalAction(self._configuration)(session)
 
-    def check_initial_state(self, system_dict):
-        """
-        We want to be able to check the initial state of a subsytem, if all objects in it are in some
-        basic initial state we can safely set enable/disable
-        """
-        try:
-            attrs = [
-                self.get_subsystem_disabled(subsystem)
-                for subsystem in system_dict["subsystems"]
-            ]
-            
-            if all(a == attrs[0] and attrs[0] for a in attrs) and attrs[0] is not None:            
-                return not attrs[0]
 
-        # Return some default value
-            return system_dict["enabled"]
-
-        except:
-            return system_dict["enabled"]
-
-    def get_subsystem_disabled(self, subsystem: Dict[str, str]) -> bool | None:
-        class_name = subsystem["class"]
-        name = subsystem["id"]
-
-        if subsystem["type"] == "attribute":
-            affected_objects = subsystem["affected_objects"]
-
-            current_states = GetAttributeValueSessionAction(self._configuration)(
-                self._session_name, class_name, name, affected_objects
-            )
-            if not all([c == current_states[0] for c in current_states]):
-                return None
-
-            if current_states[0] == subsystem["enabled_state"]:
-                return False
-            elif current_states[0] == subsystem["disabled_state"]:
-                return True
-            else:
-                return None
-
-        else:
-            dal = ca.GetDalObjectAction(self._configuration)(name, class_name)            
-            return (
-                ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name)
-            )
-            
 
     def _button_action(self, system_info, _):
         system_info["enabled"] = not system_info["enabled"]

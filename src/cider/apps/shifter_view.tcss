@@ -1,20 +1,30 @@
 /* === Main Screen === */
 ShifterViewScreen {
+}
+
+#main_container{    
     layout: grid;
     grid-size: 5 5;
     grid-rows: 1fr;
     grid-columns: 1fr;
-
     grid-gutter: 1;
+    margin-bottom: 1;
+    margin-top: 1;
+
 }
 
 /* === File IO Panel === */
 #file_io_panel_grid {
-    grid-size: 5;
+    grid-size: 5 2;
     width: 100%;
     column-span: 5;
     content-align: center middle;
     align: left middle;
+}
+
+#file_io_panel_message{
+    margin-top: 1;
+    column-span: 5
 }
 
 .file_select {
@@ -32,8 +42,7 @@ SelectOverlay{
 }
 
 SelectCurrent{
-    background: $primary-background-darken-1 10%;
-    color: blue;
+    background: $primary-background-darken-1 30%;
 }
 
 .file_io_button{
@@ -66,16 +75,18 @@ SelectCurrent{
 /* === Detector Subsystem Panel === */
 #detector_subsystem_panel_grid {
     grid-size: 20;
-    background: white;
+    border: ascii lightgrey;
 }
+
 #buttons_panel {
     column-span: 6;
+    background: $background-darken-1;
 }
 
 #schematic_view_panel {
     width: 100%;
     column-span: 14;
-    background: $background 10%;
+    background: ansi_white;
 }
 
 #schematic_view {
@@ -84,6 +95,9 @@ SelectCurrent{
 
 /* === Options Panel === */
 #option_panel_main {
+    margin-top: 2;
+    margin-right: 2;
+    margin-left: 1;
     column-span: 1;
     row-span: 5;
     padding: 1;
@@ -159,7 +173,7 @@ SelectCurrent{
 
 .scrollable_popup {
     height: 50%;
-    width: 50%;
+    width: 40%;
 }
 
 .help_up_button {
