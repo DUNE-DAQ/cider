@@ -102,6 +102,7 @@ class EnableDisablePanel(Static):
             return
 
         self._button_action(objs_affected, button_name)
+        self.update_button_styles()
         self.post_message(self.Changed(self._configuration, self._session_name))
 
     def _button_action(self, objs_affected, button_name):
@@ -145,3 +146,21 @@ class EnableDisablePanel(Static):
 
     def get_full_state_info(self):
         return self._button_list
+
+    def update_button_styles(self):
+        """Update the styles of the buttons based on their current state."""
+        for button, information in self._button_list.items():
+            button_id = button.replace(" ", "_") + "_button"
+            try:
+                button_widget = self.query_one(f"#{button_id}", Button)
+            except:
+                return
+
+            if self.check_is_disabled(button, information):
+                button_widget.remove_class("detector_subsystem_button_enabled")
+                button_widget.add_class("detector_subsystem_button_disabled")
+                button_widget.label = f"{button} (Disabled)"
+            else:
+                button_widget.remove_class("detector_subsystem_button_disabled")
+                button_widget.add_class("detector_subsystem_button_enabled")
+                button_widget.label = f"{button} (Enabled)"

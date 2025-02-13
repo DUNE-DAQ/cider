@@ -1,9 +1,12 @@
 import cider.interfaces.actions.actions as ca
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-
 from cider.screens.quit_screen import QuitScreen
 from cider.screens.help_screen import HelpScreen
+from cider.widgets.popup_message import PopupMessage
 
+from textual.reactive import reactive
+
+from textual.css.query import NoMatches
 from textual.containers import Vertical
 from textual.visual import SupportsVisual
 from textual.widgets import Button, Static
@@ -13,6 +16,8 @@ import shutil
 
 
 class OptionPanel(Static):
+    show_popup = reactive(False)
+
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,
@@ -48,6 +53,32 @@ class OptionPanel(Static):
     def saved_configuration(self):
         return self._saved_configuration
 
+    def show_popup(self, message: str):
+        """
+        Display a pop-up message on the screen.
+        """
+        # Remove any existing pop-up to avoid duplicates
+        self.remove_popup()
+
+        # Create and mount the pop-up
+        popup = PopupMessage(message, classes="popup popup_success")
+        
+        main_screen = self.app.get_screen("shifter_view_screen")
+        main_screen.query_one("#main_container").mount(popup)
+
+    def remove_popup(self):
+        """
+        Remove any existing pop-up from the screen.
+        """
+        try:
+            # Find and remove any existing pop-up
+            existing_popup = self.query_one(".popup", expect_type=PopupMessage)
+            existing_popup.remove()
+        except NoMatches:
+            # No pop-up to remove
+            pass
+
+
     def compose(self):
 
         disable_buttons = self._configuration is None or self._session_name is None
@@ -72,30 +103,33 @@ class OptionPanel(Static):
             classes="options_panel",
         )
 
-    def save_copy(self):
-        # Check output directory
-        main_output_path = Path(f"{self._output_directory}/current_config")
-        backup_output_path = Path(
-            f"{self._output_directory}/old_configs/run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+
+    def save_to_path(self, dir_path, name):
+        dir_path = Path(dir_path)
+        
+        # Clear it
+        if dir_path.is_dir():
+            shutil.rmtree(dir_path)
+        
+        dir_path.mkdir(parents=True, exist_ok=True)
+        
+        output_file_path = f"{dir_path}/{name}"
+        ca.CopyFullConfigurationAction(self._configuration)(output_file_path)
+        self.generate_change_log(output_file_path)
+
+        self.show_popup(
+            f"[white]Configuration saved to [bold grey3]{output_file_path}[/bold grey3]"
         )
 
-        if main_output_path.is_dir():
-            shutil.rmtree(main_output_path)
 
-        main_output_path.mkdir(parents=True, exist_ok=True)
-        backup_output_path.mkdir(parents=True, exist_ok=True)
+        return output_file_path
 
-        main_copy = f"{main_output_path}/{self.generate_output_name()}"
-        backup_copy = f"{backup_output_path}/{self.generate_output_name()}"
+    # Wrappers
+    def save_main(self):
+        self._saved_configuration = self.save_to_path(f"{self._output_directory}/current_config", self.generate_output_name())
 
-        # Make current copy
-        ca.CopyFullConfigurationAction(self._configuration)(main_copy)
-        self.generate_change_log(main_copy)
-        # Make backup copy
-        ca.CopyFullConfigurationAction(self._configuration)(backup_copy)
-        self.generate_change_log(backup_copy)
-
-        self._saved_configuration = main_copy
+    def save_backup(self):
+        self.save_to_path(f"{self._output_directory}/old_configs/run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}", self.generate_output_name())
 
     def generate_output_name(self):
         if self._configuration is None:
@@ -143,7 +177,7 @@ class OptionPanel(Static):
             self.app.push_screen(HelpScreen(classes="pop_up_screen"))
         elif event.button.id == "create_button":
             try:
-                self.save_copy()
+                self.save_main()
             except Exception as e:
                 raise e
 

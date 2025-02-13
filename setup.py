@@ -9,5 +9,5 @@ setup(
         "rich",
     ],
     extras_require={"develop": ["ipdb", "ipython" "black"]},
-    package_data={"": ["*.tcss", "*.json"]},
+    package_data={"": ["*.tcss", "*.yml"]},
 )

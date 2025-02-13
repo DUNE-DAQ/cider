@@ -25,18 +25,27 @@ class HelpScreen(Screen):
             """\
             [bold]Hello and welcome to the DAQ Shifter interface!![/bold]
 
-            To get started, please select a file from the dropdown menu and then select a session.  
-            The configuration will be copied, and you can start enabling/disabling things in the detector.  
-
-            Currently, 3 options are available:  
-            - [bold]Detector Subsystem[/bold]
-            - [bold]Dataflow Applications[/bold]
-            - [bold]Triggers[/bold]
-
-            You can enable/disable these options by clicking on the buttons.  
-            When you're happy, you can save/copy + quit the configuration editor and run it through DRUNC.  
-
-            In addition, you can reset all changes by pressing the reset button.  
+            To get started, please select a file from the dropdown menu and then select a session to modify. Press "open" to load the session.
+            
+            Currently there are 3 categories of objects that can be enabled or disabled:
+            - [bold]Detector subsystems[/bold]: For example the APAs, PDS, etc.
+            - [bold]The Trigger System[/bold]: Triggers to enable/disable including trigger primitive generation
+            - [bold]Dataflow applications[/bold]: Objects that control dataflow
+            
+            To disable/enable items simply press the buttons on the left side of the screen. Each set of objects is given its own tab.
+            In addition, we provide 3 views of the detector configuration, although this is mostly intended for expert use.
+            - [bold]Configuration view[/bold]: View a tree describing detector configuration
+            - [bold]Detector system view[/bold]: Summary of detector subsystems which are enabled/disabled
+            - [bold]Trigger View[/bold]: A summary of triggers/trigger objects which are enabled/disabled 
+            
+            Once you have made the desired changes, press the "Create" button to save the configuration. By default the current configuration is saved in the <RUN FOLDER>/current_config directory.
+            Older configurations are automatically moved to <RUN FOLDER>/old_configs/run_<DATE> when a new configuration is saved. 
+            
+            If you are unhappy with changes + want to revert to the original configuration, press the "Reset" button.
+            
+            Finally to quit the interface, press the "Quit" button. The configuration can be run in drunc using the command provided after quitting.
+            
+            If you have any questions, please contact the DAQ shifter on duty. Enjoy your shift!gi
         """
         )
 
