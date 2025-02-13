@@ -22,13 +22,17 @@ class QuitScreen(Screen):
         super().__init__(name, id, classes)
         self._configuration = configuration
         self._session_name = session
-        self._new_configuration_name = new_configuration_name
 
-    def message(self):
+    def message(self, quit_without_saving: bool = False):
         if self._configuration is None:
             return "[bold red]Exited without saving."
 
-        return f"[purple]To run[/purple] [bold blue]DRUNC[/bold blue] [purple]please copy/paste:[/purple]\n[bold green]drunc-unified-shell ssh-standalone {self._configuration.file_name} {self._session_name}"
+        output = ""
+        if quit_without_saving:
+            output += "[bold red]WARNING!! Configuration was create using the create message so may not be up to date with all changes, be careful![/bold red]\n\n"
+
+        output += f"[purple]To run[/purple] [bold blue]DRUNC[/bold blue] [purple]please copy/paste:[/purple]\n[bold green]drunc-unified-shell ssh-standalone {self._saved_configuration_name} {self._session_name}"
+        return output
 
     def compose(self):
         button_disabled = self._configuration is None or self._session_name is None
@@ -36,10 +40,8 @@ class QuitScreen(Screen):
         yield Grid(
             Label(f"[bold]Are you happy with the config?", id="quit_question"),
             # Button("Copy Command", variant="success", id="copy"),
-            
-            
             Button(
-                "Quit and Save",
+                "Quit and Create Config",
                 variant="success",
                 id="quit_screen_savequit_button",
                 classes="pop_up_button quit_screen_button",
@@ -62,17 +64,22 @@ class QuitScreen(Screen):
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        main_screen = self.app.get_screen("shifter_view_screen")
+        options = main_screen.query_one("OptionPanel")
         if event.button.id == "quit_screen_savequit_button":
-            try:
-                ca.CopyFullConfigurationAction(self._configuration)(
-                    self._new_configuration_name
-                )
-            except:
-                pass
+            # HACK: This is a hack to save correctly
+            options.save_copy()
+            self._saved_configuration_name = options.saved_configuration
 
             self.app.exit(self.message())
 
         if event.button.id == "quit_screen_quit_button":
-            self.app.exit(self.message())
+
+            # Check if we've saved something!
+            if options.saved_configuration is None:
+                self.app.exit("[bold red]Exited without saving.")
+            else:
+                self._saved_configuration_name = options.saved_configuration
+                self.app.exit(self.message(True))
         else:
             self.app.pop_screen()

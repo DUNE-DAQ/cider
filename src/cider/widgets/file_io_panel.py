@@ -62,10 +62,12 @@ class FileIOPanel(Static):
             Button(
                 "Open", id="open_file_button", disabled=True, classes="file_io_button"
             ),
-            Static("[bold medium_violet_red]   No file loaded\n  ", id="file_io_panel_message"),
+            Static(
+                "[bold medium_violet_red]   No file loaded\n  ",
+                id="file_io_panel_message",
+            ),
             id="file_io_panel_grid",
         )
-        
 
     @classmethod
     def generate_selection_list(cls, session_directories: str | List[str] = ""):
@@ -89,13 +91,13 @@ class FileIOPanel(Static):
                 if not folder.is_dir():
                     db = cls.get_db_from_path(folder)
                     if db is not None:
-                        database_list.append((str(db.stem), str(db)))
+                        database_list.append((str(db.name), str(db)))
                     continue
 
                 for file in folder.iterdir():
                     db = cls.get_db_from_path(file)
                     if db is not None:
-                        database_list.append((str(db.stem), str(db)))
+                        database_list.append((str(db.name), str(db)))
 
         # For the simplified DB editor view we only want to show configurations containing sessions
         return database_list
@@ -123,6 +125,8 @@ class FileIOPanel(Static):
         return n_sessions
 
     def on_select_changed(self, event: Select.Changed):
+        if event.value == Select.BLANK:
+            return
 
         if event.select.id == "select_file":
             self._selected_config_name: str = event.value
@@ -167,12 +171,16 @@ class FileIOPanel(Static):
 
     def on_button_pressed(self):
         if self._selected_config_name and self._selected_session_name:
-            self.query_one("#file_io_panel_message").update(f"   [bold green]Current Config[/bold green]: [deep_pink4]{self._configuration.file_name}[/deep_pink4]\n   [bold green]Session[/bold green]:  [deep_pink4]{self._selected_session_name}")
-        else:            
+            self.query_one("#file_io_panel_message").update(
+                f"   [bold green]Current Config[/bold green]: [deep_pink4]{self._configuration.file_name}[/deep_pink4]\n   [bold green]Session[/bold green]:  [deep_pink4]{self._selected_session_name}"
+            )
+        else:
             self._selected_config_name = ""
             self._configuration = None
             self._selected_session_name = Select.BLANK
             self.query_one("#select_session").set_options([])
-            self.query_one("#file_io_panel_message").update("[bold medium_violet_red]   No file loaded\n  ")
+            self.query_one("#file_io_panel_message").update(
+                "[bold medium_violet_red]   No file loaded\n  "
+            )
             self.post_message(self.Deconfigured())
             return

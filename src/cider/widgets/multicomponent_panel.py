@@ -1,31 +1,26 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
-from cider.interfaces.workflows.get_set_session_attribute import (
-    SetAttributeValueSessionAction,
-    GetAttributeValueSessionAction,
-)
 
-
-import cider.interfaces.actions.actions as ca
 from textual.visual import SupportsVisual
-from textual.widgets import Button
-from typing import Dict
-from copy import deepcopy
+
+from typing import Dict, Optional, List, NamedTuple, Any
+from cider.interfaces.workflows.extract_system_info import SystemInfoExtractor
+
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
     def __init__(
         self,
-        configuration: ConfigurationWrapper | None,
-        session_name: str | None,
-        object_list: dict,
+        configuration: Optional[ConfigurationWrapper],
+        session_name: Optional[str],
+        object_list: Dict,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
         shrink: bool = False,
         markup: bool = True,
-        name: str | None = None,
-        id: str | None = None,
-        classes: str | None = None,
+        name: Optional[str] = None,
+        id: Optional[str] = None,
+        classes: Optional[str] = None,
         disabled: bool = False
     ) -> None:
         super().__init__(
@@ -40,141 +35,27 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
             classes=classes,
             disabled=disabled,
         )
-        """
-        Object List:
-        "CRP4" : {
-            
-            'subsystems': {
-                "type": "component",
-                "class": "Segment",
-                "id": "crp4-segment",
-                "enabled_val": True
-            },
-            'enabled': True
-        }
-            
-        ,
-        "CRP5" : {
-            'subsystems': [{
-                "type": "component",
-                "class": "Segment",
-                "id": "crp5-segment",
-                "enabled": True
-            }],
-            'enabled': True
-        }
-        }
-        """
-
-
-        # Make a dict
         self._object_list = object_list
+        self._extractor = SystemInfoExtractor(configuration, session_name)
 
-    def generate_button_list(self):
+    def generate_button_list(self) -> Dict:
         if self._session_name is None or self._configuration is None:
             return {}
 
-        session = ca.GetDalObjectAction(self._configuration)(
-            self._session_name, "Session"
-        )
- 
-        # Copy to ensure we don't modify the original
-        output_dict = deepcopy(self._object_list)
+        self._extractor.set_config_session(self._configuration, self._session_name)
 
-        for system_name, system_info in self._object_list.items():
+        button_dict = self._extractor.initialise_subsystem(self._object_list)
+        self._extractor.set_subsystem_states(button_dict)
 
-            try:
-                output_dict[system_name]["enabled"] = self.check_initial_state(
-                    system_info.copy()
-                )
-                
-                self.initialise_subsystem(session, system_info.copy())
-            except:
-                # Can't find so don't add
-                output_dict.pop(system_name)
-                continue
+        return button_dict
 
-        return output_dict
-
-    def check_initial_state(self, system_dict):
-        """
-        We want to be able to check the initial state of a subsytem, if all objects in it are in some
-        basic initial state we can safely set enable/disable
-        """
-        attrs = [
-            self.get_subsystem_disabled(subsystem)
-            for subsystem in system_dict["subsystems"]
+    def _button_action(self, objs_affected: Dict, button_name: str) -> None:
+        self._button_list[button_name]["enabled"] = not self._button_list[button_name][
+            "enabled"
         ]
-
-        if all(a == attrs[0] and attrs[0] for a in attrs) and attrs[0] is not None:
-            return not attrs[0]
-
-        # Return some default value
-        return system_dict["enabled"]
-
-
-    def get_subsystem_disabled(self, subsystem: Dict[str, str]) -> bool | None:
-        class_name = subsystem["class"]
-        name = subsystem["id"]
-
-        if subsystem["type"] == "attribute":
-            affected_objects = subsystem["affected_objects"]
-
-            current_states = GetAttributeValueSessionAction(self._configuration)(
-                self._session_name, class_name, name, affected_objects
-            )
-            if not all([c == current_states[0] for c in current_states]):
-                return None
-
-            if current_states[0] == subsystem["enabled_state"]:
-                return False
-            elif current_states[0] == subsystem["disabled_state"]:
-                return True
-            else:
-                return None
-
-        else:
-            dal = ca.GetDalObjectAction(self._configuration)(name, class_name)
-            return ca.CheckIsDisabledAction(self._configuration)(
-                dal, self._session_name
-            )
-
-    def initialise_subsystem(self, session, system_info):
-
-        for subsystem in system_info["subsystems"]:
-            class_name = subsystem["class"]
-            name = subsystem["id"]
-
-            if system_info["enabled"]:
-                state = subsystem["enabled_state"]
-            else:
-                state = subsystem["disabled_state"]
-
-            # If we have an attribute object
-            if subsystem["type"] == "attribute":
-                affected_objects = subsystem["affected_objects"]
-                SetAttributeValueSessionAction(self._configuration).action(
-                    session, class_name, name, state, affected_objects
-                )
-            else:
-                dal = ca.GetDalObjectAction(self._configuration)(name, class_name)
-                ca.DisableDalAction(self._configuration).action(
-                    dal, self._session_name, not state
-                )
-
-            ca.UpdateDalAction(self._configuration)(dal)
-
-        ca.UpdateDalAction(self._configuration)(session)
-
-
-
-    def _button_action(self, system_info, _):
-        system_info["enabled"] = not system_info["enabled"]
-        session_dal = ca.GetDalObjectAction(self._configuration)(
-            self._session_name, "Session"
+        self._extractor.set_full_subsystem_state(
+            objs_affected["subsystems"], self._button_list[button_name]["enabled"]
         )
-
-        self.initialise_subsystem(session_dal, system_info)
 
     def check_is_disabled(self, button: str, _) -> bool:
-        return not self._button_list.get(button, False)["enabled"]
+        return not self._button_list.get(button, True)["enabled"]

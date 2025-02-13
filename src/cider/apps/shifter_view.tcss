@@ -36,7 +36,6 @@ FileIOPanel {
     row-span: 1;
 }
 
-
 SelectOverlay{
     background: ansi_white;
 }
@@ -50,13 +49,7 @@ SelectCurrent{
     color: ansi_white 100%;
 }
 
-
 /* === Generic UI === */
-#selection_tabs{
-    column-span: 4;
-    row-span: 5;
-}
-
 .detector_subsystem_button {
     width: 100%;
     align: center middle;
@@ -73,25 +66,31 @@ SelectCurrent{
 }
 
 /* === Detector Subsystem Panel === */
-#detector_subsystem_panel_grid {
+#enable_disable_panel_container {
     grid-size: 20;
     border: ascii lightgrey;
+    grid-gutter: 3;
+    column-span: 4;
+    row-span: 5;
 }
 
-#buttons_panel {
+#systematic_map_tabs{
+       column-span: 14;
+       align-horizontal: right;
+}
+
+#selection_tabs{
     column-span: 6;
+}
+
+
+
+
+#buttons_panel {
+    column-span: 10;
     background: $background-darken-1;
 }
 
-#schematic_view_panel {
-    width: 100%;
-    column-span: 14;
-    background: ansi_white;
-}
-
-#schematic_view {
-    width: 100%;
-}
 
 /* === Options Panel === */
 #option_panel_main {
@@ -114,7 +113,7 @@ SelectCurrent{
     background: $primary-darken-2;
 }
 
-#save_and_copy_button {
+#create_button {
     background: $success;
 }
 
@@ -180,4 +179,15 @@ SelectCurrent{
     background: $warning;
     color: white;
     align-horizontal: right;
+}
+
+.popup {
+    dock: bottom;
+    width: 100%;
+    height: auto;
+    padding: 1;
+    background: $error;
+    text-style: bold;
+    layer: overlay;
+    content-align: center middle;
 }

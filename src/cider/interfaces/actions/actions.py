@@ -37,6 +37,7 @@ class UnloadConfigurationAction(ActionInterface):
         self._configuration.unload()
         return None
 
+
 class UpdateDalAction(ActionInterface):
     """
     Update object in configuration
@@ -192,13 +193,4 @@ class CheckIsDisabledAction(ActionInterface):
         attr_getter = GetAttributeAction(self._configuration)
         disabled_items = attr_getter(session_dal, "disabled")
 
-        class_name = GetClassNameAction(self._configuration)
-
-        # Annoyingly doing dal_A == dal_B doesn't work...
-        for obj in disabled_items:
-            if attr_getter(dal, "id") == attr_getter(obj, "id") and class_name(
-                dal
-            ) == class_name(obj):
-                return True
-
-        return False
+        return dal in disabled_items

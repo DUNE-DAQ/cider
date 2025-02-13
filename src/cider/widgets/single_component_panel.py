@@ -10,6 +10,7 @@ from typing import List, Dict
 
 
 class SingleComponentEnableDisablePanel(EnableDisablePanel):
+
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,

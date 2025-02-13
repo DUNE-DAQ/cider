@@ -55,49 +55,42 @@ class EnableDisablePanel(Static):
     def open_new_session(
         self, configuration: ConfigurationWrapper | None, session_name: str | None
     ):
-        
         if self._configuration is not None:
             ca.UnloadConfigurationAction(self._configuration)()
-        
+
         self._session_name = session_name
         self._configuration = configuration
+
         self._button_list = self.generate_button_list()
-        
+
         self._default_states = {
             k: self.check_is_disabled(k, b) for k, b in self._button_list.items()
         }
 
-        self.post_message(self.Changed())
+        self.post_message(self.Changed(self._configuration, self._session_name))
 
     def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
         return True
 
     def compose(self):
-        with Grid(id="detector_subsystem_panel_grid"):
-            with ScrollableContainer(id="buttons_panel"):
-                for button, information in self._button_list.items():
+        with ScrollableContainer(id="buttons_panel"):
+            for button, information in self._button_list.items():
 
-                    if self.check_is_disabled(button, information):
-                        name_str = f"{button} (Disabled)"
-                        classes = "detector_subsystem_button detector_subsystem_button_disabled"
+                if self.check_is_disabled(button, information):
+                    name_str = f"{button} (Disabled)"
+                    classes = (
+                        "detector_subsystem_button detector_subsystem_button_disabled"
+                    )
 
-                    else:
-                        name_str = f"{button} (Enabled)"
-                        classes = "detector_subsystem_button detector_subsystem_button_enabled"
+                else:
+                    name_str = f"{button} (Enabled)"
+                    classes = (
+                        "detector_subsystem_button detector_subsystem_button_enabled"
+                    )
 
-                    id_name = button.replace(" ", "_")
+                id_name = button.replace(" ", "_")
 
-                    yield Button(name_str, id=f"{id_name}_button", classes=classes)
-
-            with ScrollableContainer(id="schematic_view_panel"):
-                yield Static(
-                    self.generate_display_tree().print_tree(),
-                    id="schematic_view",
-                    markup=True,
-                )
-
-    def generate_display_tree(self):
-        return DaqConfTree(self.configuration, self._session_name)
+                yield Button(name_str, id=f"{id_name}_button", classes=classes)
 
     def on_button_pressed(self, event: Button.Pressed):
         button_name = event.button.id.replace("_button", "")
@@ -109,7 +102,7 @@ class EnableDisablePanel(Static):
             return
 
         self._button_action(objs_affected, button_name)
-        self.post_message(self.Changed())
+        self.post_message(self.Changed(self._configuration, self._session_name))
 
     def _button_action(self, objs_affected, button_name):
         pass
@@ -120,10 +113,20 @@ class EnableDisablePanel(Static):
     class Changed(Message):
         """Custom message to notify when a button is pressed."""
 
-        def __init__(self) -> None:
+        def __init__(self, configuration, session) -> None:
             super().__init__()
+            self._configuration = configuration
+            self._session = session
 
-    def get_object_states(self):
+        @property
+        def configuration(self):
+            return self._configuration
+
+        @property
+        def session(self):
+            return self._session
+
+    def get_changed_states_as_str(self):
         output_str = ""
 
         for button, information in self._button_list.items():
@@ -136,3 +139,9 @@ class EnableDisablePanel(Static):
             output_str += f"_{button}_{'on' if state else 'off'}"
 
         return output_str
+
+    def get_current_states(self):
+        return {k: self.check_is_disabled(k, b) for k, b in self._button_list.items()}
+
+    def get_full_state_info(self):
+        return self._button_list

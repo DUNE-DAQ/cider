@@ -3,6 +3,7 @@
 import cider.interfaces.actions.actions as ca
 from cider.interfaces.workflows.get_objects_in_session import GetObjectsInSessionAction
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
+from cider.interfaces.workflows.extract_system_info import SystemInfoExtractor
 
 
 from rich.tree import Tree
@@ -109,7 +110,6 @@ class DaqConfTree(DaqConfTreeBase):
                 seg_disabled = True
                 colour = "grey35"
                 message = "DISABLED"
-
                 self._disabled_objs.append(seg)
 
             else:
@@ -131,7 +131,6 @@ class DaqConfTree(DaqConfTreeBase):
                 ):
                     colour = "grey35"
                     message = "DISABLED"
-
                     self._disabled_objs.append(app)
 
                 else:
@@ -141,7 +140,6 @@ class DaqConfTree(DaqConfTreeBase):
                 app_name = f"[{colour}]{app_name}   [bold]{message}"
 
                 seg_apps.add(app_name)
-
         return segs
 
     @property
@@ -149,7 +147,7 @@ class DaqConfTree(DaqConfTreeBase):
         return self._disabled_objs
 
 
-class TriggerTree(DaqConfTreeBase):
+class ComponentLevelTree(DaqConfTreeBase):
     """
     Class To Represent Trigger Tree
     """
@@ -158,49 +156,57 @@ class TriggerTree(DaqConfTreeBase):
         self,
         configuration: ConfigurationWrapper | None = None,
         session: str | None = None,
-        button_list: dict = {},
+        system_info: dict = {},
         disabled_items=[],
     ):
-        self._button_list = button_list
+        self._system_info = system_info
         self._disabled_items = disabled_items
+        self._extractor = SystemInfoExtractor(configuration, session)
+
         super().__init__(configuration, session)
 
     def generate_tree(self):
         self._tree = Tree("[bold deep_pink4] Triggers")
 
-        session = ca.GetDalObjectAction(self._configuration)(self._session, "Session")
+        trigger_labels = list(self._system_info.keys())
 
-        for trigger_label, trigger_info in self._button_list.items():
-            enabled = trigger_info["enabled"]
-            if enabled:
+        session_dal = ca.GetDalObjectAction(self._configuration)(
+            self._session, "Session"
+        )
+
+        for label in trigger_labels:
+            trigger_enabled = self._system_info[label]["enabled"]
+            if trigger_enabled:
                 colour = "chartreuse4"
                 text = "ENABLED"
             else:
                 colour = "grey35"
                 text = "DISABLED"
 
-            t = self._tree.add(f"[bold {colour}]{trigger_label}     {text}")
+            trigger_tree = self._tree.add(f"[bold {colour}]{label}     {text}")
 
-            for object in GetObjectsInSessionAction(self._configuration)(
-                session,
-                trigger_info["class_name"],
-                trigger_info.get("object_names", None),
-            ):
-                if (
-                    ca.CheckIsDisabledAction(self._configuration)(object, self._session)
-                    or object in self._disabled_items
-                ):
-                    colour = "grey35"
-                    text = "[bold]APP DISABLED"
-                elif not enabled:
-                    colour = "purple3"
-                    text = "[bold]TRIGGER DISABLED"
-                else:
-                    colour = "chartreuse3"
-                    text = "[bold]ENABLED"
+            for subsystem in self._system_info[label]["subsystems"]:
 
-                t.add(
-                    f"[{colour}]{ca.GetAttributeAction(self._configuration)(object, 'id')}    {trigger_info['attribute_name']} {text}"
+                enabled = self._extractor.check_single_object_state(
+                    subsystem, trigger_enabled
                 )
+
+                # Okay now we can grab each component
+
+                specific_comps = GetObjectsInSessionAction(self._configuration)(
+                    session_dal, subsystem["class"], subsystem["affected_objects"]
+                )
+
+                for c in specific_comps:
+                    if enabled and c not in self._disabled_items:
+                        colour = "chartreuse3"
+                        text = "[bold]ENABLED"
+                    else:
+                        colour = "grey35"
+                        text = "[bold]DISABLED"
+
+                    trigger_tree.add(
+                        f"[{colour}]{ca.GetAttributeAction(self._configuration)(c, 'id')}    {text}"
+                    )
 
         return self._tree

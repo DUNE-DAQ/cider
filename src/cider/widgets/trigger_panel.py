@@ -14,6 +14,9 @@ from rich.tree import Tree
 
 
 class TriggerPanel(EnableDisablePanel):
+
+    OBJECT_NAME = "Triggers"
+
     def __init__(
         self,
         configuration: ConfigurationWrapper | None,
@@ -52,7 +55,6 @@ class TriggerPanel(EnableDisablePanel):
             disabled=disabled,
         )
 
-
         self._attribute_map = attribute_map
 
     def generate_button_list(self):
@@ -68,9 +70,9 @@ class TriggerPanel(EnableDisablePanel):
         # This one is nice and simple!
         for trigger_label, trigger_info in self._attribute_map.items():
 
-            class_name = trigger_info["class_name"]
-            trigger_name = trigger_info["attribute_name"]
-            object_names = trigger_info["object_names"]
+            class_name = trigger_info["class"]
+            trigger_name = trigger_info["id"]
+            object_names = trigger_info["affected_objects"]
 
             # Quick consistency check
             current_states = GetAttributeValueSessionAction(self._configuration)(
@@ -95,7 +97,7 @@ class TriggerPanel(EnableDisablePanel):
             trigger_info["enabled"] = init_state
 
             # This should be None
-            object_names = trigger_info["object_names"]
+            object_names = trigger_info["affected_objects"]
 
             session = ca.GetDalObjectAction(self._configuration)(
                 self._session_name, "Session"
@@ -110,20 +112,20 @@ class TriggerPanel(EnableDisablePanel):
     def check_is_disabled(self, button: str, _) -> bool:
         return not self._button_list.get(button, False)["enabled"]
 
-    def _button_action(self, objs_affected, button_name):
+    def _button_action(self, trigger_info, button_name):
 
         if objs_affected is None:
             return
 
-        class_name = objs_affected["class_name"]
-        object_names = objs_affected["object_names"]
-        trigger_name = objs_affected["attribute_name"]
+        class_name = trigger_info["class"]
+        trigger_name = trigger_info["id"]
+        object_names = trigger_info["affected_objects"]
 
         # We want to flip this!
-        if objs_affected["enabled"] == objs_affected.get("enabled_state", True):
-            objs_affected["enabled"] = objs_affected.get("disabled_state", False)
+        if trigger_info["enabled"] == trigger_info.get("enabled_state", True):
+            trigger_info["enabled"] = trigger_info.get("disabled_state", False)
         else:
-            objs_affected["enabled"] = objs_affected.get("enabled_state", True)
+            trigger_info["enabled"] = trigger_info.get("enabled_state", True)
 
         session = ca.GetDalObjectAction(self._configuration)(
             self._session_name, "Session"
@@ -133,7 +135,7 @@ class TriggerPanel(EnableDisablePanel):
             session,
             class_name,
             trigger_name,
-            objs_affected["enabled"],
+            trigger_info["enabled"],
             object_names,
         )
 
