@@ -7,7 +7,7 @@ from cider.widgets.popup_message import PopupMessage
 from textual.reactive import reactive
 
 from textual.css.query import NoMatches
-from textual.containers import Vertical
+from textual.containers import ScrollableContainer
 from textual.visual import SupportsVisual
 from textual.widgets import Button, Static
 from pathlib import Path
@@ -83,7 +83,7 @@ class OptionPanel(Static):
 
         disable_buttons = self._configuration is None or self._session_name is None
 
-        yield Vertical(
+        yield ScrollableContainer(
             Button("[bold white]Help", id="help_button", classes="options_button"),
             Button(
                 "[bold white]Create",

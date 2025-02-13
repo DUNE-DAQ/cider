@@ -64,7 +64,7 @@ class ShifterViewScreen(Screen):
 
             with Grid(id="enable_disable_panel_container"):
                 with TabbedContent(id="selection_tabs"):
-                    with TabPane("Detector Subsystems", id="detector_subsystem_tab"):
+                    with TabPane("Detector", id="detector_subsystem_tab"):
                         yield MultiComponentEnableDisablePanel(
                             None,
                             None,

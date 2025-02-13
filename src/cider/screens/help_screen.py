@@ -45,7 +45,7 @@ class HelpScreen(Screen):
             
             Finally to quit the interface, press the "Quit" button. The configuration can be run in drunc using the command provided after quitting.
             
-            If you have any questions, please contact the DAQ shifter on duty. Enjoy your shift!gi
+            If you have any questions, please contact the DAQ shifter on duty. Enjoy your shift!!
         """
         )
 
