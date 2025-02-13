@@ -64,7 +64,7 @@ class ShifterViewScreen(Screen):
 
             with Grid(id="enable_disable_panel_container"):
                 with TabbedContent(id="selection_tabs"):
-                    with TabPane("Detector Component", id="detector_subsystem_tab"):
+                    with TabPane("Detector Subsystems", id="detector_subsystem_tab"):
                         yield MultiComponentEnableDisablePanel(
                             None,
                             None,
@@ -216,8 +216,8 @@ class ShifterViewScreen(Screen):
 
     def on_enable_disable_panel_changed(self, message: EnableDisablePanel.Changed):
         for a in self.query("EnableDisablePanel"):
-            a.refresh(recompose=True)
-
+            a.update_button_styles()
+            
         self.update_trees(message.configuration, message.session)
 
     def update_trees(self, configuration: ConfigurationWrapper, session: str):
