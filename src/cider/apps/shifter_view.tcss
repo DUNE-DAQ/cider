@@ -84,8 +84,6 @@ SelectCurrent{
 }
 
 
-
-
 #buttons_panel {
     column-span: 10;
     background: $background-darken-1;

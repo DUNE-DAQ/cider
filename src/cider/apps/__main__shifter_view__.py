@@ -57,7 +57,11 @@ class ShifterView(App):
 
     def exit(self, message: str | None = None) -> None:
         """Override the exit method to store the exit message."""
-        self._exit_message = message
+        
+        if message is not None:
+            self._exit_message = message
+        else:
+            self._exit_message = "[bold red]Force exiting the application!!!"
         super().exit()  # Call the original exit method
 
     def exit_message(self) -> str:

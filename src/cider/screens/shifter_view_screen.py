@@ -145,6 +145,7 @@ class ShifterViewScreen(Screen):
                 self.open_new_file()
             except Exception as e:
                 # Display the error message in a pop-up
+                raise e
                 self.show_popup(
                     f"[white]Invalid configuration[/white] [bold grey3]{self.query_one(FileIOPanel).selected_config_name}:{self.query_one(FileIOPanel).selected_session_name}[/bold grey3] [white]passed, please check with the experts!"
                 )

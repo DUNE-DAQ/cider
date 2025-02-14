@@ -9,4 +9,7 @@ class SubsystemInfo(NamedTuple):
     id: str
     enabled_state: Any
     disabled_state: Any
+    # For attributes
     affected_objects: Optional[List] = None
+    # for relationships
+    relationship_name: str = ""

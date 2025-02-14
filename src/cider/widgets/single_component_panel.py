@@ -51,7 +51,7 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
         )
 
         buttons = []
-
+        
         for class_ in self._class_list:
             buttons += GetObjectsInSessionAction(self._configuration)(session, class_)
 

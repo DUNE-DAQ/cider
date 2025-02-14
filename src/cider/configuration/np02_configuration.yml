@@ -5,16 +5,9 @@ TriggerMap:
       - id: tp_generation_enabled
         type: attribute
         class: ReadoutApplication
-        affected_objects: [runp02srv001eth0, runp02srv003eth1]
+        affected_objects: [runp02srv001eth0, runp02srv003eth1, runp02srv002eth0, runp02srv003eth0]
         enabled_state: true
         disabled_state: false
-      - id: tp_generation_enabled
-        type: attribute
-        class: ReadoutApplication
-        affected_objects: [runp02srv002eth0, runp02srv003eth0]
-        enabled_state: true
-        disabled_state: false
-  
       
     enabled: true
 
@@ -47,10 +40,18 @@ DetectorSystemMap:
         id: crp4-segment
         enabled_state: true
         disabled_state: false
-
-      
     enabled: true
   
+  UtterNonsnese:
+    subsystems:
+      - type: relationship
+        class: Segment
+        id: crp4-segment
+        enabled_state: [runp02srv002eth0, ReadoutApplication]
+        disabled_state: [df-s01-d2, DFApplication]
+        relationship_name: "applications"
+    enabled: true
+
   CRP5:
     subsystems:
       - type: component
