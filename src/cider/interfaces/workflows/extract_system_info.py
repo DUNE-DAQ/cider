@@ -8,7 +8,7 @@ from cider.interfaces.workflows.get_set_session_attribute import (
     SetAttributeValueSessionAction,
     GetAttributeValueSessionAction,
 )
-from typing import Dict, Optional, List, NamedTuple, Any
+from typing import Dict, List, Any
 from copy import deepcopy
 
 
@@ -71,6 +71,9 @@ class SystemInfoExtractor:
             return self._check_attribute_state(subsystem_info, default_state)
         elif subsystem_info.type == "component":
             return self._check_component_state(subsystem_info)
+        elif subsystem_info.type == "relationship":
+            return self._check_relationship_state(subsystem_info)
+
         else:
             raise NotImplementedError(
                 "Subsystems must be either an attribute or a component"
@@ -85,6 +88,7 @@ class SystemInfoExtractor:
             enabled_state=system_obj["enabled_state"],
             disabled_state=system_obj["disabled_state"],
             affected_objects=system_obj.get("affected_objects", None),
+            relationship_name=system_obj.get("relationship_name",None),
         )
 
     def _check_attribute_state(
@@ -121,6 +125,44 @@ class SystemInfoExtractor:
             )
             else default_state
         )
+        
+    def _check_relationship_state(self, subsystem_info: SubsystemInfo):
+        # We're gonna need to get the dal
+        
+        subsystem_dal = ca.GetDalObjectAction(self._configuration)(
+            subsystem_info.id, subsystem_info.class_name
+        )
+        
+        
+        
+        if subsystem_info.enabled_state is None:
+            enabled_dal = None
+        else:
+            enabled_dal = ca.GetDalObjectAction(self._configuration)(
+                subsystem_info.enabled_state[0], subsystem_info.enabled_state[1]
+            )
+
+        if subsystem_info.disabled_state is None:
+            disabled_dal = None
+        else:
+            disabled_dal = ca.GetDalObjectAction(self._configuration)(
+                subsystem_info.disabled_state[0], subsystem_info.disabled_state[1]
+            )
+
+        if not isinstance(rel:= ca.GetAttributeAction(self._configuration)(subsystem_dal, subsystem_info.relationship_name), list):
+            rel = [rel]
+
+        # Check if it's a list
+        # We're gonna just remove the enable and disabled states from the list
+                
+        if enabled_dal in rel:
+            return True
+        elif disabled_dal in rel:
+            return False
+
+        return None
+
+            
 
     def _check_component_state(self, subsystem_info: SubsystemInfo) -> bool | None:
         subsystem_dal = ca.GetDalObjectAction(self._configuration)(
@@ -154,6 +196,8 @@ class SystemInfoExtractor:
             self._set_attribute_state(subsystem_info, state_value, session)
         elif subsystem_info.type == "component":
             self._set_component_state(subsystem_info, state_value, session)
+        elif subsystem_info.type == "relationship":
+            self._set_relationship_state(subsystem_info, state_value)
         else:
             raise NotImplementedError(
                 "Subsystems must be either an attribute or a component"
@@ -167,6 +211,59 @@ class SystemInfoExtractor:
             state,
             subsystem_info.affected_objects,
         )
+        
+    def _set_relationship_state(self, subsystem_info: SubsystemInfo, state: Any):
+        # basically the same as _set_attribute_state but we need to get the dal
+        if state is None:
+            state = None
+        
+        else:
+            state = ca.GetDalObjectAction(self._configuration)(
+                state[0], state[1]
+            )
+
+        subsystem_dal = ca.GetDalObjectAction(self._configuration)(
+            subsystem_info.id, subsystem_info.class_name
+        )
+        
+        # Check if it's a list
+        if isinstance(rel_list:=ca.GetAttributeAction(self._configuration)(subsystem_dal, subsystem_info.relationship_name), list):
+            # We're gonna just remove the enable and disabled states from the list
+            if subsystem_info.enabled_state is not None:            
+                enabled_dal = ca.GetDalObjectAction(self._configuration)(
+                    subsystem_info.enabled_state[0], subsystem_info.enabled_state[1]
+                )
+                if enabled_dal in rel_list:
+                    rel_list.remove(enabled_dal)
+
+            else:
+                enabled_dal = None
+            
+            if subsystem_info.disabled_state is not None:
+                disabled_dal = ca.GetDalObjectAction(self._configuration)(
+                    subsystem_info.disabled_state[0], subsystem_info.disabled_state[1]
+                )
+                if disabled_dal in rel_list:
+                    rel_list.remove(disabled_dal)
+
+            else:
+                disabled_dal = None
+            
+            # Again massively inneficient but hey
+
+            if state is not None:
+                rel_list.append(state)
+    
+            state = rel_list
+            
+        # Now update 
+        ca.ChangeAttributeAction(self._configuration)(
+            subsystem_dal, subsystem_info.relationship_name, state
+        )
+        
+
+        ca.UpdateDalAction(self._configuration)(subsystem_dal)
+        
 
     def _set_component_state(self, subsystem_info: SubsystemInfo, state: Any, session):
         subsystem_dal = ca.GetDalObjectAction(self._configuration)(

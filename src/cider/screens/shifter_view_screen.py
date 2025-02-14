@@ -93,7 +93,7 @@ class ShifterViewScreen(Screen):
                     id="systematic_map_tabs",
                     classes="systematic_map_tabs",
                 ):
-                    with TabPane("Configuration View", id="full_system_map_tab"):
+                    with TabPane("System View", id="full_system_map_tab"):
                         yield ScrollableContainer(
                             Static(
                                 DaqConfTree(None, None).print_tree(),
@@ -102,7 +102,7 @@ class ShifterViewScreen(Screen):
                             id="tree_view_full_container",
                             classes="tree_view_full_container",
                         )
-                    with TabPane("Detector System View", id="det_system_tab"):
+                    with TabPane("Detector View", id="det_system_tab"):
                         yield ScrollableContainer(
                             Static(
                                 ComponentLevelTree(
@@ -145,6 +145,7 @@ class ShifterViewScreen(Screen):
                 self.open_new_file()
             except Exception as e:
                 # Display the error message in a pop-up
+                raise e
                 self.show_popup(
                     f"[white]Invalid configuration[/white] [bold grey3]{self.query_one(FileIOPanel).selected_config_name}:{self.query_one(FileIOPanel).selected_session_name}[/bold grey3] [white]passed, please check with the experts!"
                 )
