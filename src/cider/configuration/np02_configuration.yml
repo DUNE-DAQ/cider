@@ -80,15 +80,6 @@ DetectorSystemMap:
         disabled_state: false
     enabled: true
   
-  UtterNonsnese:
-    subsystems:
-      - type: relationship
-        class: Segment
-        id: crp4-segment
-        enabled_state: [runp02srv002eth0, ReadoutApplication]
-        disabled_state: [runp02srv002eth0, ReadoutApplication]
-        relationship_name: "applications"
-    enabled: true
 
   CRP5:
     subsystems:
