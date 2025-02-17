@@ -58,13 +58,14 @@ class ShifterView(App):
 
     def action_quit(self):
         """Quit the application."""
-        config, session = self.screen("shifter_view_screen").query_one("#option_panel_main").get_config_session
+        shifter_view = self.get_screen("shifter_view_screen")
+        config, session = shifter_view.query_one("#option_panel_main").get_config_session()
     
-        QuitScreen(
-            config,
+        self.push_screen(QuitScreen(
             session,
+            config,
             classes="pop_up_screen",
-        )
+        ))
 
     def exit(self, message: str | None = None) -> None:
         """Override the exit method to store the exit message."""
@@ -107,3 +108,4 @@ def main(input_directory, output_directory, interface_config):
 
 if __name__ == "__main__":
     main()
+ 
