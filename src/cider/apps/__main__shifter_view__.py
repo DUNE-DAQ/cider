@@ -14,6 +14,26 @@ from pathlib import Path
 import logging
 from datetime import datetime
 
+'''
+TODO
+    - Empty configuration selection dropdown
+    - Try Marco's interface: ssh://git@gitlab.cern.ch:7999/dune-daq/online/config-management.git
+
+RECIPES
+    - Detector
+    - Trigger:
+        - TPC TPG works fine
+        - CRP -> TPC
+        - Random triggers not there yet
+
+Testing
+    - nested segments conf for testing https://gitlab.cern.ch/dune-daq/online/ehn1-daqconfigs/-/tree/mroda/crp-segment?ref_type=heads
+
+Timeline:
+    Depends on system; 
+'''
+
+
 
 class ShifterView(App):
     """
@@ -44,7 +64,8 @@ class ShifterView(App):
 
         logging.basicConfig(
             filename=f"{logging_path}/shifter_view_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",
-            format='%(asctime)s %(message)s',
+            format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+            datefmt='%Y-%m-%d:%H:%M:%S',
             level=log_level,
         )
 
@@ -54,8 +75,6 @@ class ShifterView(App):
         self._interface_config = interface_config
         self._output_directory = output_directory
         self._exit_message = ""
-        
-        
         
     def on_mount(self):
         """
@@ -76,9 +95,15 @@ class ShifterView(App):
 
     def action_quit(self):
         """Quit the application."""
+            
+        logging.info(self.screen.__class__)
+    
         shifter_view = self.get_screen("shifter_view_screen")
         config, session = shifter_view.query_one("#option_panel_main").get_config_session()
     
+        if isinstance(self.screen, QuitScreen):
+            self.pop_screen()
+        
         self.push_screen(QuitScreen(
             session,
             config,

@@ -1,5 +1,5 @@
 from textual.screen import Screen
-from textual.containers import ScrollableContainer, Grid, Container
+from textual.containers import ScrollableContainer, Grid
 from textual.widgets import TabbedContent, TabPane, Header, Footer, Button, Static
 from textual import on
 from textual.css.query import NoMatches
@@ -13,6 +13,9 @@ from cider.widgets.options_panel import OptionPanel
 from cider.widgets.file_io_panel import FileIOPanel
 from cider.utils.consolidate_file import ConsolidateFile
 from cider.utils.daq_conf_tree import DaqConfTree, ComponentLevelTree
+from cider.utils.shifter_config_reader import ShifterConfigReader
+
+import traceback
 
 from pathlib import Path
 import os
@@ -46,12 +49,7 @@ class ShifterViewScreen(Screen):
 
         logging.info("Opening shifter view screen")
 
-        with open(interface_config
-                  , "r") as f:
-            interface_conf_file = yaml.safe_load(f)
-
-            self.detector_system_map = interface_conf_file["DetectorSystemMap"]
-            self.trigger_map = interface_conf_file["TriggerMap"]
+        self._config = ShifterConfigReader(interface_config)
 
         self._config_folder = config_folder
         self._output_directory = output_directory
@@ -63,35 +61,16 @@ class ShifterViewScreen(Screen):
         """
         Generate the screen layout
         """
+                
         with ScrollableContainer(id="main_container"):
-            yield FileIOPanel(self._config_folder, id="file_io_panel")
+            
+            yield FileIOPanel(self._config_folder, self._config.default_config, self._config.default_session_list, id="file_io_panel")
 
             with Grid(id="enable_disable_panel_container"):
                 with TabbedContent(id="selection_tabs"):
-                    with TabPane("Detector", id="detector_subsystem_tab"):
-                        yield MultiComponentEnableDisablePanel(
-                            None,
-                            None,
-                            self.detector_system_map,
-                            id="detector_subsystem_panel",
-                            classes="detector_subsystem",
-                        )
-                    with TabPane("Dataflow", id="dataflow_apps_tab"):
-                        yield SingleComponentEnableDisablePanel(
-                            None,
-                            None,
-                            ["DFApplication"],
-                            id="dataflow_subsystem_panel",
-                            classes="detector_subsystem",
-                        )
-                    with TabPane("Trigger", id="enable_trigger_tab"):
-                        yield MultiComponentEnableDisablePanel(
-                            None,
-                            None,
-                            self.trigger_map,
-                            id="trigger_panel",
-                            classes="detector_subsystem",
-                        )
+                    for panel in self._config.panel_list:
+                        yield panel 
+                    
                 with TabbedContent(
                     "SystematicMap",
                     id="systematic_map_tabs",
@@ -106,28 +85,10 @@ class ShifterViewScreen(Screen):
                             id="tree_view_full_container",
                             classes="tree_view_full_container",
                         )
-                    with TabPane("Detector View", id="det_system_tab"):
-                        yield ScrollableContainer(
-                            Static(
-                                ComponentLevelTree(
-                                    None, None, self.detector_system_map
-                                ).print_tree(),
-                                id="tree_view_det",
-                            ),
-                            id="det_view_trigger_container",
-                        )
-    
+                        
+                    for panel in self._config.map_list:
+                        yield panel
                     
-                    with TabPane("Trigger View", id="trigger_system_tab"):
-                        yield ScrollableContainer(
-                            Static(
-                                ComponentLevelTree(
-                                    None, None, self.trigger_map
-                                ).print_tree(),
-                                id="tree_view_trigger",
-                            ),
-                            id="tree_view_trigger_container",
-                        )
 
             yield OptionPanel(
                 None,
@@ -147,7 +108,7 @@ class ShifterViewScreen(Screen):
         if event.button.id == "open_file_button":
             try:
                 self.open_new_file()
-            except Exception as e:
+            except RuntimeError as e:
                 # Display the error message in a pop-up
                 self.show_popup(
                     f"[white]Invalid configuration[/white] [bold grey3]{self.query_one(FileIOPanel).selected_config_name}:{self.query_one(FileIOPanel).selected_session_name}[/bold grey3] [white]passed, please check with the experts!\n\
@@ -157,6 +118,17 @@ class ShifterViewScreen(Screen):
             
                 logging.error(f"Couldn't open file: {self.query_one(FileIOPanel).selected_config_name}:{self.query_one(FileIOPanel).selected_session_name}")
                 logging.error(f"Error: {e}")
+                await self.deconfigure()
+            except Exception as e:
+                self.show_popup(
+                    f"[white]ERROR::{e}. This is likely an issue with the interface. Please check with the experts!\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]"
+                )
+                # Optionally log the error for debugging
+            
+                logging.error(f"Couldn't open file: {self.query_one(FileIOPanel).selected_config_name}:{self.query_one(FileIOPanel).selected_session_name}")
+                logging.error(f"{traceback.format_exc()}")
+                await self.deconfigure()
+                
 
     def show_popup(self, message: str):
         """
@@ -182,12 +154,23 @@ class ShifterViewScreen(Screen):
             pass
 
     @on(FileIOPanel.Deconfigured)
-    def deconfigure(self):
+    async def deconfigure(self):
         self.query_one(OptionPanel).open_new_session(None, None)
         for a in self.query("EnableDisablePanel"):
             a.open_new_session(None, None)
             a.refresh(recompose=True)
 
+    @on(FileIOPanel.PathChanged)
+    async def on_path_changed(self):
+        try:
+            self.open_new_file()
+        except:
+            await self.deconfigure()
+            self.show_popup(
+                f"[white]Configuration has been removed from disk!"
+            )
+        
+        
     def open_new_file(self):
         """
         Open a new file is the only cross-app interface
@@ -242,20 +225,37 @@ class ShifterViewScreen(Screen):
         disabled = main_tree.disabled_objs
 
         # We can also do a component level tree
+        for panel_name in self._config.panel_labels:
+            self.update_tree(panel_name, configuration, session, disabled)
 
-        detector_states = self.query_one("#detector_subsystem_panel").get_full_state_info()
-        detector_tree = ComponentLevelTree(
-            configuration, session, detector_states, "Detector Systems", disabled
-        )
+    def update_tree(self, panel_name, configuration, session, disabled):
+        # Get current state of panel
+        try:
+            panel_state = self.query_one(f"#{panel_name}_subsystem_panel").get_full_state_info()
+            
+            new_tree = ComponentLevelTree(
+                configuration, session, panel_state, panel_name, disabled
+            )
+        
+        # Now we just need the static widget
+            self.query_one(f"#tree_view_{panel_name}").update(new_tree.print_tree())
+        except:
+            return
 
-        self.query_one("#tree_view_det").update(detector_tree.print_tree())
+
+        # detector_states = self.query_one("#detector_subsystem_panel").get_full_state_info()
+        # detector_tree = ComponentLevelTree(
+        #     configuration, session, detector_states, "Detector Systems", disabled
+        # )
+
+        # self.query_one("#tree_view_det").update(detector_tree.print_tree())
 
 
-        # We also want trigger states
-        trigger_states = self.query_one("#trigger_panel").get_full_state_info()
-        trigger_tree = ComponentLevelTree(
-            configuration, session, trigger_states, "Triggers", disabled
-        )
+        # # We also want trigger states
+        # trigger_states = self.query_one("#trigger_panel").get_full_state_info()
+        # trigger_tree = ComponentLevelTree(
+        #     configuration, session, trigger_states, "Triggers", disabled
+        # )
 
 
-        self.query_one("#tree_view_trigger").update(trigger_tree.print_tree())
+        # self.query_one("#tree_view_trigger").update(trigger_tree.print_tree())

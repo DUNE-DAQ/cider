@@ -56,12 +56,17 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
         for class_ in self._class_list:
             buttons += GetObjectsInSessionAction(self._configuration)(session, class_)
 
-        return {            
-            ca.GetAttributeAction(self._configuration)(b, "id"): ca.GetClassNameAction(
-                self._configuration
-            )(b)
+        get_id = ca.GetAttributeAction(self._configuration)
+        get_class = ca.GetClassNameAction(self._configuration)
+
+        # Enabled first
+        buttons = sorted(buttons, key=lambda x: self.check_is_disabled(get_id(x, "id"), get_class(x)))
+
+        # We want enabled first!
+        return {get_id(b, "id"): get_class(b)
             for b in buttons
         }
+            
 
     def _button_action(self, class_name, button_name):
 
