@@ -17,9 +17,6 @@ from datetime import datetime
 '''
 TODO
     - Empty configuration selection dropdown
-    - Defaults: To NP02 etc. [put in YAML]
-        - Name of session etc.
-    - Rename TPG [CRP->TPC] get rid of NP02
     - Try Marco's interface: ssh://git@gitlab.cern.ch:7999/dune-daq/online/config-management.git
 
 RECIPES
