@@ -119,6 +119,7 @@ class FileIOPanel(Static):
                 id="file_io_panel_message",
             )
 
+
     def _get_default_file_value(self) -> str:
         """Returns the default file value if available, otherwise Select.BLANK."""
         default = self._get_default_config_value()
@@ -170,6 +171,7 @@ class FileIOPanel(Static):
                 self.query_one("#select_session").value = s
                 self.query_one("#open_file_button").disabled = False
                 break
+        
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handles changes to the select widgets."""
@@ -273,3 +275,4 @@ class FileIOPanel(Static):
 
     class PathChanged(Message):
         """Message sent when the file list changes."""
+        

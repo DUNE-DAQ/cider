@@ -76,8 +76,6 @@ class ShifterView(App):
         self._output_directory = output_directory
         self._exit_message = ""
         
-        
-        
     def on_mount(self):
         """
         Mount App
