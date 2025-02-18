@@ -17,12 +17,9 @@ from datetime import datetime
 '''
 TODO
     - Empty configuration selection dropdown
-    - Refresh live
     - Defaults: To NP02 etc. [put in YAML]
         - Name of session etc.
-    - DF apps by enabled first
     - Rename TPG [CRP->TPC] get rid of NP02
-    - Nightly release?
     - Try Marco's interface: ssh://git@gitlab.cern.ch:7999/dune-daq/online/config-management.git
 
 RECIPES
@@ -70,7 +67,8 @@ class ShifterView(App):
 
         logging.basicConfig(
             filename=f"{logging_path}/shifter_view_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",
-            format='%(asctime)s %(message)s',
+            format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+            datefmt='%Y-%m-%d:%H:%M:%S',
             level=log_level,
         )
 

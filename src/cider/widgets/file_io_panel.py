@@ -4,8 +4,6 @@ from cider.utils.file_system_watcher import FileSystemWatcher
 
 from watchdog.observers import Observer
 import threading
-import time
-
 
 
 from textual.containers import Grid
@@ -28,6 +26,8 @@ class FileIOPanel(Static):
     def __init__(
         self,
         search_directory,
+        default_config: str,
+        default_session: str,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -54,6 +54,10 @@ class FileIOPanel(Static):
         self._selected_config_name = ""
         self._selected_session_name = ""
 
+        # defaults
+        self._default_config = default_config
+        self._default_session = default_session
+
         self.file_options = self.generate_selection_list(self._search_directory)
 
         # Start the directory watcher in a separate thread
@@ -78,40 +82,74 @@ class FileIOPanel(Static):
     def refresh_file_list(self):
         """Refreshes the file selection list when files are modified."""
         new_options = self.generate_selection_list(self._search_directory)
+        
         if new_options != self.file_options:  # Update only if changes occur
             self.file_options = new_options
             self.watch_file_options()  # Ensure UI updates correctly
+            
+            self.post_message(self.PathChanged())
 
+    
     def on_unmount(self):
         """Stops the observer when the panel is unmounted."""
         self._observer.stop()
         self._observer.join()
         
-
     def compose(self):
-        yield Grid(
-            Select(
+    
+        
+        with Grid(id="file_io_panel_grid"):
+            default = self.get_default_val()
+            if default is not None:
+                file_val = default[1]
+            else:
+                file_val = Select.BLANK
+            
+
+            yield Select(
                 self.file_options,
                 prompt="Select a File",
                 id="select_file",
                 classes="file_select",
-            ),
-            Select(
-                [],
+                value = file_val
+            )
+        
+            session_val = Select.BLANK    
+            select_list = []
+            if file_val != Select.BLANK:
+                self.open_new_file(file_val)
+            
+                select_list = [ca.GetAttributeAction(self._configuration)(i, "id") for i in ca.GetDalsOfClassAction(self._configuration)("Session")]
+
+                for d in self._default_session:
+                    if d in select_list:
+                        session_val = d
+                        break
+                    
+            
+            yield Select(
+                [(s, s) for s in select_list],
                 prompt="Select a Session",
                 id="select_session",
                 classes="file_select",
-            ),
-            Button(
-                "Open", id="open_file_button", disabled=True, classes="file_io_button"
-            ),
-            Static(
+                value=session_val
+            )
+            
+            b = Button(
+                "Open", id="open_file_button",
+                disabled=session_val!=Select.BLANK and file_val!=Select.BLANK,
+                classes="file_io_button")
+            yield b
+            
+            if session_val != Select.BLANK and file_val != Select.BLANK:
+                b.disabled = False
+                b.press()
+
+            
+            yield Static(
                 "[bold medium_violet_red]   No file loaded\n  ",
                 id="file_io_panel_message",
-            ),
-            id="file_io_panel_grid",
-        )
-        
+            )
             
     @classmethod
     def generate_selection_list(cls, session_directories: str | List[str] = ""):
@@ -168,39 +206,59 @@ class FileIOPanel(Static):
         # Get total nimber of sesions in the config
         return n_sessions
 
-    def on_select_changed(self, event: Select.Changed):
-
-        if event.select.id == "select_file":
-            if event.value == Select.BLANK:
-                self._selected_config_name = None
-                self._selected_session_name = None
+    def open_new_file(self, file_name):
+        
+        # No file selectedfirst
+        if file_name == Select.BLANK:
+            self._selected_config_name = None
+            self._selected_session_name = None
+            try:
                 self.query_one("#select_session").set_options([])
-                return
+            except:
+                pass
+            return
 
 
-            self._selected_config_name: str = event.value
-            self._configuration = ConfigurationWrapper(self._selected_config_name)
-            session_list = [
-                (
-                    ca.GetAttributeAction(self._configuration)(i, "id"),
-                    ca.GetAttributeAction(self._configuration)(i, "id"),
-                )
-                for i in ca.GetDalsOfClassAction(self._configuration)("Session")
-            ]
-
+        self._selected_config_name: str = file_name
+        self._configuration = ConfigurationWrapper(self._selected_config_name)
+        session_list = [
+            (
+                ca.GetAttributeAction(self._configuration)(i, "id"),
+                ca.GetAttributeAction(self._configuration)(i, "id"),
+            )
+            for i in ca.GetDalsOfClassAction(self._configuration)("Session")
+        ]
+        
+        try:
             self.query_one("#select_session").set_options(session_list)
+            
+            # Set default session
+            for s in self._default_session:
+                if s in session_list:
+                    self.query_one("#select_session").value = s
+                    self.query_one("#open_file_button").disabled = False
+                    break
+        except Exception as e:
+            pass
 
-        elif event.select.id == "select_session":
-
-            if event.value == Select.BLANK:
-                self._selected_session_name = ""
-            else:
-                self._selected_session_name: str = event.value
+    def open_new_session(self, session_name):
+        if session_name == Select.BLANK:
+            self._selected_session_name = ""
+        else:
+            self._selected_session_name: str = session_name
 
         if self._selected_config_name and self._selected_session_name:
             self.query_one("#open_file_button").disabled = False
         else:
             self.query_one("#open_file_button").disabled = True
+        
+
+    def on_select_changed(self, event: Select.Changed):
+        if event.select.id == "select_file":
+            self.open_new_file(event.value)
+
+        elif event.select.id == "select_session":
+            self.open_new_session(event.value)   
 
     @property
     def configuration(self) -> ConfigurationWrapper | None:
@@ -215,6 +273,10 @@ class FileIOPanel(Static):
         return self._selected_session_name
 
     class Deconfigured(Message):
+        def __init__(self):
+            super().__init__()
+
+    class PathChanged(Message):
         def __init__(self):
             super().__init__()
 
@@ -245,6 +307,10 @@ class FileIOPanel(Static):
             """
             try:
                 self.query_one("#select_file").set_options(self.file_options)
+                
+                default = self.get_default_val()
+                if default is not None:
+                    self.query_one("#select_file").value = self.get_default_val()[1]
             except:
                 pass
     
@@ -254,3 +320,9 @@ class FileIOPanel(Static):
         or refresh the file options when the widget is first displayed.
         """
         self.file_options = self.generate_selection_list(self._search_directory)
+
+    def get_default_val(self):
+        for i in self.file_options:
+            if self._default_config == i[0]:
+                return i 
+        return None
