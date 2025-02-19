@@ -13,8 +13,7 @@ import os
 from pathlib import Path
 import logging
 
-try:
-    import confi
+from config_management import ConfPool
 
 class FileIOPanel(Static):
     file_options = reactive([])

@@ -12,4 +12,3 @@ setup(
     extras_require={"develop": ["ipdb", "ipython"]},
     package_data={"": ["*.tcss", "*.yml"]},
 )
-w
