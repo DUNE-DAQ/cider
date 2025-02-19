@@ -15,8 +15,6 @@
 # Full System
 General:
   default_config: "np02-session.data.xml"
-  # Order by preference
-  default_session_list: ["np02-session"]
 
 PanelOptions:
   # Triggers

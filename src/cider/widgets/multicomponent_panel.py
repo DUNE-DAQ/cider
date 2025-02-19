@@ -3,11 +3,15 @@ from cider.widgets.enable_disable_base import EnableDisablePanel
 
 from textual.visual import SupportsVisual
 
-from typing import Dict, Optional, List, NamedTuple, Any
+from typing import Dict, Optional
 from cider.interfaces.workflows.extract_system_info import SystemInfoExtractor
 
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
+    """
+    For enabling/disabling systems made of many different things
+    """
+
     def __init__(
         self,
         configuration: Optional[ConfigurationWrapper],
@@ -42,9 +46,13 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         if self._session_name is None or self._configuration is None:
             return {}
 
+        # Set up information extractor
         self._extractor.set_config_session(self._configuration, self._session_name)
 
+        # Grabs state information for each button
         button_dict = self._extractor.initialise_subsystem(self._object_list)
+
+        # Makes sure that the button states are set correctly and consistent
         self._extractor.set_subsystem_states(button_dict)
 
         return button_dict

@@ -5,7 +5,7 @@ from watchdog.observers import Observer
 import threading
 from textual.containers import Grid
 from textual.visual import SupportsVisual
-from textual.widgets import Button, Static, Select, Pretty
+from textual.widgets import Button, Static, Select
 from textual.message import Message
 from textual.reactive import reactive
 from typing import List, Optional, Tuple
@@ -13,16 +13,21 @@ import os
 from pathlib import Path
 import logging
 
-from config_management import ConfPool
+# from config_management import ConfPool
+
 
 class FileIOPanel(Static):
+    """
+    I/O panel for selecting a configuration file and session.
+    """
+
+    # Reactive to auto-update widgets
     file_options = reactive([])
 
     def __init__(
         self,
         search_directory: str | List[str],
         default_config: str,
-        default_session: str,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -51,7 +56,6 @@ class FileIOPanel(Static):
 
         # Defaults
         self._default_config = default_config
-        self._default_session = default_session
 
         self.file_options = self._generate_selection_list(self._search_directory)
 
@@ -60,6 +64,7 @@ class FileIOPanel(Static):
         self._watcher = FileSystemWatcher(self)
         self._start_directory_watch()
 
+    # ========================== Watch Methods ==========================
     def _start_directory_watch(self) -> None:
         """Starts watching for changes in the directory."""
         watch_dirs = (
@@ -83,10 +88,22 @@ class FileIOPanel(Static):
             self._update_file_select()
             self.post_message(self.PathChanged())
 
+    def watch_file_options(self) -> None:
+        """Updates the file select widget when file_options changes."""
+        try:
+            self.query_one("#select_file").set_options(self.file_options)
+            default = self._get_default_config_value()
+            if default:
+                self.query_one("#select_file").value = default[1]
+        except Exception as e:
+            logging.warning(f"Failed to update file select: {e}")
+
     def on_unmount(self) -> None:
         """Stops the observer when the panel is unmounted."""
         self._observer.stop()
         self._observer.join()
+
+    # ========================== UI Methods ==========================
 
     def compose(self):
         """Composes the UI elements."""
@@ -100,19 +117,18 @@ class FileIOPanel(Static):
                 value=file_val,
             )
 
-            session_val, session_options = self._get_session_options(file_val)
+            session_options = self._get_session_options(file_val)
             yield Select(
                 [(s, s) for s in session_options],
                 prompt="Select a Session",
                 id="select_session",
                 classes="file_select",
-                value=session_val,
             )
 
             yield Button(
                 "Open",
                 id="open_file_button",
-                disabled=not (session_val and file_val),
+                disabled=True,
                 classes="file_io_button",
             )
 
@@ -121,13 +137,12 @@ class FileIOPanel(Static):
                 id="file_io_panel_message",
             )
 
-
     def _get_default_file_value(self) -> str:
         """Returns the default file value if available, otherwise Select.BLANK."""
         default = self._get_default_config_value()
         return default[1] if default else Select.BLANK
 
-    def _get_session_options(self, file_val: str) -> Tuple[str, List[str]]:
+    def _get_session_options(self, file_val: str) -> List[str]:
         """Returns the session value and options based on the selected file."""
         if file_val == Select.BLANK:
             return Select.BLANK, []
@@ -137,9 +152,7 @@ class FileIOPanel(Static):
             ca.GetAttributeAction(self._configuration)(i, "id")
             for i in ca.GetDalsOfClassAction(self._configuration)("Session")
         ]
-
-        session_val = next((s for s in self._default_session if s in session_list), Select.BLANK)
-        return session_val, session_list
+        return session_list
 
     def _open_new_file(self, file_name: str) -> None:
         """Handles opening a new file and updating the session list."""
@@ -151,13 +164,17 @@ class FileIOPanel(Static):
 
         self._selected_config_name = file_name
         self._configuration = ConfigurationWrapper(self._selected_config_name)
+
+        # Grab all the sessions available
         session_list = [
-            (ca.GetAttributeAction(self._configuration)(i, "id"), ca.GetAttributeAction(self._configuration)(i, "id"))
+            (
+                ca.GetAttributeAction(self._configuration)(i, "id"),
+                ca.GetAttributeAction(self._configuration)(i, "id"),
+            )
             for i in ca.GetDalsOfClassAction(self._configuration)("Session")
         ]
 
         self._update_session_select(session_list)
-        self._set_default_session(session_list)
 
     def _update_session_select(self, options: List[Tuple[str, str]]) -> None:
         """Updates the session select widget with the given options."""
@@ -166,21 +183,14 @@ class FileIOPanel(Static):
         except Exception as e:
             logging.warning(f"Failed to update session select: {e}")
 
-    def _set_default_session(self, session_list: List[Tuple[str, str]]) -> None:
-        """Sets the default session if available."""
-        for s in self._default_session:
-            if s in session_list:
-                self.query_one("#select_session").value = s
-                self.query_one("#open_file_button").disabled = False
-                break
-        
-
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handles changes to the select widgets."""
         if event.select.id == "select_file":
             self._open_new_file(event.value)
         elif event.select.id == "select_session":
-            self._selected_session_name = event.value if event.value != Select.BLANK else ""
+            self._selected_session_name = (
+                event.value if event.value != Select.BLANK else ""
+            )
             self._update_button_state()
 
     def _update_button_state(self) -> None:
@@ -209,26 +219,22 @@ class FileIOPanel(Static):
         )
         self.post_message(self.Deconfigured())
 
-    def watch_file_options(self) -> None:
-        """Updates the file select widget when file_options changes."""
-        try:
-            self.query_one("#select_file").set_options(self.file_options)
-            default = self._get_default_config_value()
-            if default:
-                self.query_one("#select_file").value = default[1]
-        except Exception as e:
-            logging.warning(f"Failed to update file select: {e}")
-
     def _get_default_config_value(self) -> Optional[Tuple[str, str]]:
         """Returns the default config value if available."""
-        return next((i for i in self.file_options if self._default_config == i[0]), None)
+        return next(
+            (i for i in self.file_options if self._default_config == i[0]), None
+        )
 
     @classmethod
-    def _generate_selection_list(cls, session_directories: str | List[str]) -> List[Tuple[str, str]]:
+    def _generate_selection_list(
+        cls, session_directories: str | List[str]
+    ) -> List[Tuple[str, str]]:
         """Generates a list of file options from the given directories."""
         if isinstance(session_directories, str):
             session_directories = (
-                [os.getcwd()] if not session_directories else [Path(p) for p in session_directories.split(":")]
+                [os.getcwd()]
+                if not session_directories
+                else [Path(p) for p in session_directories.split(":")]
             )
         else:
             session_directories = [Path(p) for p in session_directories]
@@ -242,10 +248,10 @@ class FileIOPanel(Static):
                 db = cls._get_db_from_path(item)
                 if db:
                     database_list.append((str(db.name), str(db)))
-                
+
                 if not item.is_dir():
                     continue
-                    
+
                 for sub_item in item.iterdir():
                     db = cls._get_db_from_path(sub_item)
                     if db:
@@ -253,10 +259,8 @@ class FileIOPanel(Static):
 
         return database_list
 
-
-
     @classmethod
-    def _get_db_from_path(cls, file_path: Path) -> Optional[Path]: 
+    def _get_db_from_path(cls, file_path: Path) -> Optional[Path]:
         """Returns a database path if the file is a valid configuration."""
         if file_path.is_file() and ".data.xml" in str(file_path):
             if cls._get_number_of_sessions(str(file_path)) > 0:
@@ -271,21 +275,20 @@ class FileIOPanel(Static):
             return len(ca.GetDalsOfClassAction(config_file)("Session"))
         except Exception:
             return 0
-        
+
     @property
     def selected_config_name(self) -> str:
         """Returns the selected configuration name."""
         return self._selected_config_name
-    
+
     @property
     def selected_session_name(self) -> str:
         """Returns the selected session name."""
         return self._selected_session_name
-        
-    # Messages
+
+    # ========================== Messages ==========================
     class Deconfigured(Message):
         """Message sent when the panel is deconfigured."""
 
     class PathChanged(Message):
         """Message sent when the file list changes."""
-        
