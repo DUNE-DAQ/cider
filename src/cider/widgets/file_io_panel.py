@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 import logging
 
+from config_management import ConfPool
+
 class FileIOPanel(Static):
     file_options = reactive([])
 
@@ -252,6 +254,7 @@ class FileIOPanel(Static):
         return database_list
 
 
+
     @classmethod
     def _get_db_from_path(cls, file_path: Path) -> Optional[Path]: 
         """Returns a database path if the file is a valid configuration."""
@@ -268,6 +271,16 @@ class FileIOPanel(Static):
             return len(ca.GetDalsOfClassAction(config_file)("Session"))
         except Exception:
             return 0
+        
+    @property
+    def selected_config_name(self) -> str:
+        """Returns the selected configuration name."""
+        return self._selected_config_name
+    
+    @property
+    def selected_session_name(self) -> str:
+        """Returns the selected session name."""
+        return self._selected_session_name
         
     # Messages
     class Deconfigured(Message):

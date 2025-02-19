@@ -31,7 +31,7 @@ class QuitScreen(Screen):
 
         output = ""
         if quit_without_saving:
-            output += "[bold red]WARNING!! Configuration was create using the create message so may not be up to date with all changes, be careful![/bold red]\n\n"
+            output += "[bold red]WARNING!! Configuration was created earlier but you've quit without saving so this may not be up to date with all the changes you've made, be careful![/bold red]\n\n"
 
         output += f"[purple]To run[/purple] [bold blue]DRUNC[/bold blue] [purple]please copy/paste:[/purple]\n[bold green]drunc-unified-shell ssh-standalone {self._saved_configuration_name} {self._session_name}"
         return output
