@@ -6,8 +6,6 @@ from cider.widgets.popup_message import PopupMessage
 from cider.utils.file_cleaner import clean_old_files
 from cider.widgets.file_io_panel import FileIOPanel
 
-from textual.reactive import reactive
-
 from textual.css.query import NoMatches
 from textual.containers import ScrollableContainer
 from textual.visual import SupportsVisual
