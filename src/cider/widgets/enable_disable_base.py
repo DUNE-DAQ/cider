@@ -1,14 +1,12 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 import cider.interfaces.actions.actions as ca
-from cider.utils.daq_conf_tree import DaqConfTree
 
-from textual.geometry import Region
 from textual.visual import SupportsVisual
-from textual.widgets import Static, Placeholder, Button
-from textual.containers import Grid, ScrollableContainer
+from textual.widgets import Static, Button
+from textual.containers import ScrollableContainer
 from textual.message import Message
-from typing import List
 import logging
+
 
 class EnableDisablePanel(Static):
     """
@@ -63,14 +61,16 @@ class EnableDisablePanel(Static):
 
         self._button_list = self.generate_button_list()
 
+        # Need default initial states
         self._default_states = {
             k: self.check_is_disabled(k, b) for k, b in self._button_list.items()
         }
 
+        # Update everything else!
         self.post_message(self.Changed(self._configuration, self._session_name))
 
-    def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
-        return True
+    def check_is_disabled(self, *args, **kwargs) -> bool:
+        raise NotImplementedError("Check is disabled not implemented for class")
 
     def compose(self):
         with ScrollableContainer(id="buttons_panel"):
@@ -104,13 +104,15 @@ class EnableDisablePanel(Static):
         self._button_action(objs_affected, button_name)
         self.update_button_styles()
         self.post_message(self.Changed(self._configuration, self._session_name))
-        logging.debug(f"Button {button_name} {'disabled' if self.check_is_disabled(button_name, self._button_list[button_name]) else 'enabled'}")
+        logging.debug(
+            f"Button {button_name} {'disabled' if self.check_is_disabled(button_name, self._button_list[button_name]) else 'enabled'}"
+        )
 
-    def _button_action(self, objs_affected, button_name):
-        pass
+    def _button_action(self, *args, **kwargs):
+        raise NotImplementedError("Button action must be implemented")
 
     def generate_button_list(self):
-        return {}
+        raise NotImplementedError("Generate button list must be implemented")
 
     class Changed(Message):
         """Custom message to notify when a button is pressed."""
@@ -132,20 +134,24 @@ class EnableDisablePanel(Static):
         output_str = ""
 
         for button, information in self._button_list.items():
+            # Check if the button is disabled
             state = self.check_is_disabled(button, information)
 
             if state == self._default_states[button]:
                 continue
 
+            # Hacky but it means we can have readable buttons and textual can use them...
             button = button.replace(" ", "_")
             output_str += f"_{button}_{'on' if state else 'off'}"
 
         return output_str
 
     def get_current_states(self):
+        # Return a dictionary of the current states for mapping purposes
         return {k: self.check_is_disabled(k, b) for k, b in self._button_list.items()}
 
     def get_full_state_info(self):
+        # Full information is just the button list dict
         return self._button_list
 
     def update_button_styles(self):
@@ -154,7 +160,7 @@ class EnableDisablePanel(Static):
             button_id = button.replace(" ", "_") + "_button"
             try:
                 button_widget = self.query_one(f"#{button_id}", Button)
-            except:
+            except Exception:
                 return
 
             if self.check_is_disabled(button, information):

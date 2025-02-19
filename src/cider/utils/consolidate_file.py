@@ -5,15 +5,17 @@ from cider.interfaces.actions.actions import (
     CopyDalAction,
     GetRelatedDalsAction,
 )
+from typing import Any
 
-import datetime
 import sys
 import os
-from typing import Any, List, Dict
 
 
 class ConsolidateFile:
-    # YES THIS EXiSTS
+    """
+    File consolidator. Moves all objects in a session into a single .data.xml database
+    """
+
     def __init__(
         self,
         current_config_name: str,
@@ -21,6 +23,7 @@ class ConsolidateFile:
         top_level_object_class: str,
         new_config_name: str,
     ):
+
         self._top_level_object_name = top_level_object_name
         self._top_level_object_class = top_level_object_class
 
@@ -41,7 +44,7 @@ class ConsolidateFile:
 
         return list(set(includes))
 
-    def open_files(self) -> ConfigurationWrapper:
+    def open_files(self) -> None:
         database = ConfigurationWrapper(f"{self._current_config_name}")
 
         # Grab included schema
