@@ -70,7 +70,8 @@ class ShifterView(App):
 
         clean_old_files(logging_path, "log")
 
-        self._configuration_folder = configuration_folder
+        self._configuration_folder = configuration_folder        
+        
         self._interface_config = interface_config
         self._output_directory = output_directory
         self._exit_message = ""
@@ -131,7 +132,7 @@ class ShifterView(App):
     "-d",
     "--input-directory",
     "input_directory",
-    default=os.getenv("DUNEDAQ_DB_PATH", ""),
+    default="./config_management",
     required=False,
 )
 @click.option(
