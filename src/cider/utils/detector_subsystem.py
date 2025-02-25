@@ -13,4 +13,5 @@ class SubsystemInfo(NamedTuple):
     affected_objects: Optional[List] = (
         None  # List of objects affected by attribute. If None then all objects are affected
     )
-    relationship_name: str = ""  # Name of relationship if subsystem is a relationship
+    relationship_name: Optional[str] = None  # Name of relationship if subsystem is a relationship
+    connected_systems: Optional[List['SubsystemInfo']] = (None)  # List of connected systems to subsystem

@@ -4,6 +4,7 @@ from textual.widgets import TabbedContent, TabPane, Header, Footer, Button, Stat
 from textual import on
 from textual.css.query import NoMatches
 
+from cider.widgets.multicomponent_panel import MultiComponentEnableDisablePanel
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
 from cider.widgets.options_panel import OptionPanel
@@ -240,23 +241,9 @@ class ShifterViewScreen(Screen):
         disabled = main_tree.disabled_objs
 
         # Update component level trees
-        for panel_name in self._config.panel_labels:
-            self.update_tree(panel_name, configuration, session, disabled)
+        for panel in self.query("MultiComponentEnableDisablePanel"):            
+            self.update_tree(panel)
 
-    def update_tree(self, panel_name, configuration, session, disabled):
-        # Get current state of panel
-        try:
-            panel_state = self.query_one(
-                f"#{panel_name}_subsystem_panel"
-            ).get_full_state_info()
-
-            new_tree = ComponentLevelTree(
-                configuration, session, panel_state, panel_name, disabled
-            )
-
-            # Now we just need the static widget
-            self.query_one(f"#tree_view_{panel_name}").update(new_tree.print_tree())
-        except Exception:
-            # The loop is a little dumb and also does single-component items so we just skip this
-            logging.debug(f"Couldn't update {panel_name} tree")
-            logging.debug(traceback.format_exc())
+    def update_tree(self, panel: MultiComponentEnableDisablePanel):
+        # Get current state of panel        
+        self.query_one(f"#tree_view_{panel.id.replace('_subsystem_panel', '')}").update(panel.get_tree().print_tree())

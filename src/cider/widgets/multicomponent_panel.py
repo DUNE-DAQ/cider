@@ -1,10 +1,14 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
-
-from textual.visual import SupportsVisual
+from cider.interfaces.workflows.extract_system_info import SubsystemStatus, DetectorExtractor
+from cider.utils.daq_conf_tree import ComponentLevelTree
 
 from typing import Dict, Optional
-from cider.interfaces.workflows.extract_system_info import SystemInfoExtractor
+from textual.visual import SupportsVisual
+
+import logging
+
+
 
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
@@ -15,8 +19,8 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
     def __init__(
         self,
         configuration: Optional[ConfigurationWrapper],
-        session_name: Optional[str],
-        object_list: Dict,
+        session_name: Optional[str] = "",
+        object_list: Dict = {},
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -27,6 +31,7 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         classes: Optional[str] = None,
         disabled: bool = False
     ) -> None:
+
         super().__init__(
             configuration,
             session_name,
@@ -39,10 +44,12 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
             classes=classes,
             disabled=disabled,
         )
+        
         self._object_list = object_list
-        self._extractor = SystemInfoExtractor(configuration, session_name)
 
-    def generate_button_list(self) -> Dict:
+        self._extractor = DetectorExtractor(configuration, session_name, object_list)
+
+    def generate_button_list(self) -> Dict | None:
         if self._session_name is None or self._configuration is None:
             return {}
 
@@ -50,20 +57,29 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         self._extractor.set_config_session(self._configuration, self._session_name)
 
         # Grabs state information for each button
-        button_dict = self._extractor.initialise_subsystem(self._object_list)
+        self._extractor.read_system(self._object_list)
 
-        # Makes sure that the button states are set correctly and consistent
-        self._extractor.set_subsystem_states(button_dict)
+        # Makes sure that the button states are set correctly and consistent      
+                  
+        return self._extractor.get_all_states()
 
-        return button_dict
+    def _button_action(self, _, button_name: str) -> None:
 
-    def _button_action(self, objs_affected: Dict, button_name: str) -> None:
-        self._button_list[button_name]["enabled"] = not self._button_list[button_name][
-            "enabled"
-        ]
-        self._extractor.set_full_subsystem_state(
-            objs_affected["subsystems"], self._button_list[button_name]["enabled"]
+        current_state = self._extractor.get_state(button_name)
+        
+        if current_state==SubsystemStatus.PARTIALLY_ENABLED:
+            current_state = SubsystemStatus.DISABLED
+
+        desired_state = SubsystemStatus(not bool(current_state))
+
+        self._extractor.set_state(
+            desired_state, button_name
         )
 
-    def check_is_disabled(self, button: str, _) -> bool:
-        return not self._button_list.get(button, True)["enabled"]
+    def check_button_state(self, button: str, _) -> SubsystemStatus:
+        return SubsystemStatus(self._extractor.get_state(button))
+    
+
+    def get_tree(self, disabled_states = []):
+        tree = ComponentLevelTree(self._configuration, self._session_name, self._object_list, disabled_states)
+        return tree

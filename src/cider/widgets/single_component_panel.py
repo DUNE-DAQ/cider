@@ -1,9 +1,10 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
 from cider.interfaces.workflows.get_objects_in_session import GetObjectsInSessionAction
-from textual.visual import SupportsVisual
 import cider.interfaces.actions.actions as ca
+from cider.interfaces.workflows.extract_system_info import SubsystemStatus
 
+from textual.visual import SupportsVisual
 from typing import List
 
 
@@ -61,7 +62,7 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
 
         # Enabled first
         buttons = sorted(
-            buttons, key=lambda x: self.check_is_disabled(get_id(x, "id"), get_class(x))
+            buttons, key=lambda x: self.check_button_state(get_id(x, "id"), get_class(x)), reverse=True
         )
 
         # We want enabled first!
@@ -82,6 +83,6 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
 
         ca.UpdateDalAction(self._configuration)(session_dal)
 
-    def check_is_disabled(self, button: str, information: str | List[str]) -> bool:
+    def check_button_state(self, button: str, information: str | List[str]) -> SubsystemStatus:
         dal = ca.GetDalObjectAction(self._configuration)(button, information)
-        return ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name)
+        return SubsystemStatus(not ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name))

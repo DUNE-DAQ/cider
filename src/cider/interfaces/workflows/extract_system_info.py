@@ -7,371 +7,365 @@ from cider.interfaces.workflows.get_set_session_attribute import (
     SetAttributeValueSessionAction,
     GetAttributeValueSessionAction,
 )
-from typing import Dict, List, Any
+from cider.interfaces.workflows.get_objects_in_session import GetSegmentAppsListAction
+
+from typing import Dict, Sequence, Optional
+from enum import IntEnum
 from copy import deepcopy
+from abc import ABC, abstractmethod
+import traceback
 
+import logging
 
-class SystemInfoExtractor:
-    """
-    Object for checking and changing the state of a pre-defined multi-object system i.e. trigger/detector
-    """
+'''
+ Logic
+    1. Input dict defined as
 
-    def __init__(
-        self, configuration: ConfigurationWrapper | None, session_name: str | None
-    ):
+        System A:
+            top_level_segement: str
+            
+            attributes:
+              - id: strid: str
+                class: str
+                enabled_state: Any
+                disabled_state: Any
+                
+                # If we want an additional button
+                separate_system: bool
+                label: str
+              - ... 
+
+            components:
+              - id: str
+                class: str
+                enabled_state: bool
+                disabled_state: bool
+                
+                # If we want an additional button
+                separate_system: bool
+                label: str
+                - ...
+    
+        System B:
+            ...
+        
+    2. Work out the state of each subsytem
+        
+'''
+
+class SubsystemStatus(IntEnum):
+    DISABLED = 0
+    ENABLED = 1
+    PARTIALLY_ENABLED = 2
+
+class ItemExtractor(ABC):
+    def __init__(self, configuration: ConfigurationWrapper | None, session_name: Optional[str] = None):
+        
         self._configuration = configuration
         self._session_name = session_name
-
-    def set_config_session(
-        self, configuration: ConfigurationWrapper, session_name: str
-    ):
-        """
-        Change the session + config
-        """
+        
+        if configuration is None or session_name is None:
+            return
+        
+    def set_config_session(self, configuration: ConfigurationWrapper, session_name: str):
         self._configuration = configuration
         self._session_name = session_name
+        
+    @abstractmethod
+    def get_state(self) -> SubsystemStatus:
+        pass
+    
+    @abstractmethod
+    def set_state(self, state: SubsystemStatus):
+        pass
 
-    def initialise_subsystem(self, system_dict: Dict) -> Dict:
-        """
-        Given a list of systems defined as
-        [{Name: {
-                subsystems: [{
-                    type: "attribute" | "component",
-                    class: "class_name",
-                    id: "id",
-                    enabled_state: "state",
-                    disabled_state: "state",
-                    affected_objects: ["obj1", "obj2"] # Optional and used only for attributes
-                }]
-            }
-            enabled: "bool" # default state we want the object to be in if the configuration doesn't make sense
-        },...]
-        set up the interface and check state information.
-        """
-        output_dict = deepcopy(system_dict)
+class SubsystemExtractor(ItemExtractor):
+    def __init__(self, configuration: ConfigurationWrapper | None, session_name: str, subsystem: dict):
+        super().__init__(configuration, session_name)
+        
+        self._subsystem = subsystem
+        self._session_dal = ca.GetDalObjectAction(self._configuration)(self._session_name, "Session")
+        
+        # Attributes
+        self._system_class = subsystem["class"]
+        self._system_id = subsystem["id"]
 
-        # Loop over each system
-        for system in system_dict.keys():
-            try:
-                # Grab system information
-                subsystem_list = system_dict[system]["subsystems"]
-                default_state = system_dict[system]["enabled"]
+        self._enabled_state = subsystem.get("enabled_state", True)
+        self._disabled_state = subsystem.get("disabled_state", False)
+    
 
-                # Set state to of the system to be the state of the subsystems
-                output_dict[system]["enabled"] = self.check_full_subsystem_state(
-                    subsystem_list, default_state
-                )
-            # If the action hits an error we set it to done
-            except CiderBadActionException:
-                output_dict[system]["enabled"] = None
-            # Unhandled exceptions crash the app
-            except Exception as e:
-                raise e
+        self._is_system = subsystem.get("separate_system", False)
+        self._system_name = subsystem.get("system_label", None)
 
-            # If it's gone into error it likely doesn't exist and so we remove it
-            if output_dict[system]["enabled"] is None:
-                output_dict.pop(system)
+    
+    @property
+    def is_system(self) -> bool:
+        return self._is_system    
 
-        return output_dict
+    @is_system.setter
+    def is_system(self, is_system: bool):
+        self._is_system = is_system
 
-    def check_full_subsystem_state(
-        self, subsystem_list: List[Dict], default_state
-    ) -> bool | None:
-        """
-        Check the state of an entire system
-        """
+    @property
+    def system_name(self) -> str:
+        return self._system_name
 
-        # Get the state of all subsystems
-        object_states = [
-            self.check_single_object_state(subsystem, default_state)
-            for subsystem in subsystem_list
-        ]
+    @system_name.setter
+    def system_name(self, name: str):
+        self._system_name = name
+        
+        
+    @property
+    def system_id(self) -> str:
+        return self._system_id
+    
+    @property
+    def system_class(self) -> str:
+        return self._system_class
 
-        # Check for consistency, if all objects agree on the state return that
-        if all(
-            s == object_states[0] and object_states[0] is not None
-            for s in object_states
-        ):
-            return object_states[0]
+class AttributeExtractor(SubsystemExtractor):
+    def __init__(self, configuration: ConfigurationWrapper | None, session_name: str,
+                 subsystem: Dict, top_level_segment: str="root-segment"):
 
-        # System has gone into error OR object doesn't exist
-        if object_states[0] is None:
-            return None
+        super().__init__(configuration, session_name, subsystem)
 
-        # Return system's default state
-        return default_state
+        self._top_level_segment = top_level_segment
+        top_level_segment_dal = ca.GetDalObjectAction(self._configuration)(top_level_segment, "Segment")    
 
-    def check_single_object_state(self, system_obj: Dict, default_state) -> bool | None:
-        """
-        Check the state of a subsystem
-        """
-        # Get the subsystem information
-        subsystem_info = self._extract_subsystem_info(system_obj)
-
-        # Treat attribtues, components and relationships differently
-        if subsystem_info.type == "attribute":
-            return self._check_attribute_state(subsystem_info, default_state)
-        elif subsystem_info.type == "component":
-            return self._check_component_state(subsystem_info)
-        elif subsystem_info.type == "relationship":
-            return self._check_relationship_state(subsystem_info)
-
-        else:
-            raise NotImplementedError(
-                "Subsystems must be either an attribute or a component"
-            )
-
-    def _extract_subsystem_info(self, system_obj: Dict) -> SubsystemInfo:
-        """Extract subsystem information from the system object."""
-        return SubsystemInfo(
-            type=system_obj["type"],
-            class_name=system_obj["class"],
-            id=system_obj["id"],
-            enabled_state=system_obj["enabled_state"],
-            disabled_state=system_obj["disabled_state"],
-            affected_objects=system_obj.get("affected_objects", None),
-            relationship_name=system_obj.get("relationship_name", None),
-        )
-
-    def _check_attribute_state(
-        self, subsystem_info: SubsystemInfo, default_state
-    ) -> bool | None:
-        """
-        Check the state of an attribute
-        """
-
-        # Get the session
-        session_dal = ca.GetDalObjectAction(self._configuration)(
-            self._session_name, "Session"
-        )
-
-        # Get the value of the attriubte for ALL affected objects
+        
+        self._affected_objects = [ca.GetAttributeAction(self._configuration)(a, 'id') for \
+                                a in GetSegmentAppsListAction(self._configuration)(top_level_segment_dal)\
+                                if ca.GetClassNameAction(self._configuration)(a) == subsystem["class"]]
+    
+    def get_state(self) -> SubsystemStatus | None:
         current_states = GetAttributeValueSessionAction(self._configuration)(
-            session_dal,
-            subsystem_info.class_name,
-            subsystem_info.id,
-            subsystem_info.affected_objects,
+            self._session_dal,
+            self._system_class,
+            self._system_id,
+            self._affected_objects,
         )
 
-        # If none of these objects exist we return None so this is removed from the system
         if len(current_states) == 0:
             return None
-
-        # Get state of all subsystems
-        is_enabled_list: List[bool | None] = []
-
-        # Need to check if the state is the same for all objects,
-        # since enabled/disable may not = True/False we need to be careful
+        
+        state = current_states[0]
+        
         for s in current_states:
-            if s == subsystem_info.enabled_state:
-                is_enabled_list.append(True)
-            elif s == subsystem_info.disabled_state:
-                is_enabled_list.append(False)
+            if s == state:
+                continue
+
+            return SubsystemStatus.PARTIALLY_ENABLED
+
+        return SubsystemStatus.ENABLED if s == self._enabled_state else SubsystemStatus.DISABLED
+
+    def get_state_for_obj(self, object_name: str) -> SubsystemStatus:
+        try:
+            object_state = ca.GetAttributeAction(self._configuration)(object_name, self._system_id)
+    
+            if object_state == self._enabled_state:
+                return SubsystemStatus.ENABLED    
             else:
-                is_enabled_list.append(None)
+                return SubsystemStatus.DISABLED
 
-        # Return the state of the system if it's consistent across all objects
-        # if an object is not well defined return None as the system cannot make sense
-        # otherwise return the default state
-        if all(
-            s == is_enabled_list[0] and is_enabled_list[0] is not None
-            for s in is_enabled_list
-        ):
-            return is_enabled_list[0]
+        except Exception:
+            raise CiderBadActionException(f"Could not get state for object {object_name} in subsystem {self._system_id}")
 
-        elif None in is_enabled_list:
-            return None
-        else:
-            return default_state
-
-    def _check_relationship_state(self, subsystem_info: SubsystemInfo):
-        """
-        For a button that switches between two states defined by a relationship
-        """
-
-        # Get the dal object for the subsystem
-        subsystem_dal = ca.GetDalObjectAction(self._configuration)(
-            subsystem_info.id, subsystem_info.class_name
-        )
-
-        # If enable/disable involves removing a relationship set it to done
-        if subsystem_info.enabled_state is None:
-            enabled_dal = None
-        # Otherwise we can grab the dal object
-        else:
-            enabled_dal = ca.GetDalObjectAction(self._configuration)(
-                subsystem_info.enabled_state[0], subsystem_info.enabled_state[1]
-            )
-
-        # And then do the same for the dsiabled state
-        if subsystem_info.disabled_state is None:
-            disabled_dal = None
-        else:
-            disabled_dal = ca.GetDalObjectAction(self._configuration)(
-                subsystem_info.disabled_state[0], subsystem_info.disabled_state[1]
-            )
-
-        # Get the relationship, having it as a list makes it easier to handle
-        if not isinstance(
-            rel := ca.GetAttributeAction(self._configuration)(
-                subsystem_dal, subsystem_info.relationship_name
-            ),
-            list,
-        ):
-            rel = [rel]
-
-        # Check if it's a list
-        # We're gonna just remove the enable and disabled states from the list
-
-        # For now we do not handle the case where both are in the list
-        if enabled_dal in rel:
-            return True
-        elif disabled_dal in rel:
-            return False
-
-        return None
-
-    def _check_component_state(self, subsystem_info: SubsystemInfo) -> bool | None:
-        """
-        Check the state of a component. In this case components are just objects that can be enabled/disabled in the Session
-        """
-
-        # Grab dal
-        subsystem_dal = ca.GetDalObjectAction(self._configuration)(
-            subsystem_info.id, subsystem_info.class_name
-        )
-
-        # Simple check
-        return not ca.CheckIsDisabledAction(self._configuration)(
-            subsystem_dal, self._session_name
-        )
-
-    def set_subsystem_states(self, system_dict: Dict):
-        """
-        Set the state of all objects in a subsystem
-        """
-        for system in system_dict.keys():
-            subsystem_list = system_dict[system]["subsystems"]
-            state = system_dict[system]["enabled"]
-            self.set_full_subsystem_state(subsystem_list, state)
-
-    def set_full_subsystem_state(self, subsystem_list: List[Dict], state: bool):
-        for subsystem in subsystem_list:
-            """
-            Set the state of a single subsystem
-            """
-            self.set_single_object_state(subsystem, state)
-
-    def set_single_object_state(self, system_obj: Dict, state: bool):
-        """
-        Set the state of a single subsystem
-        """
-
-        # Info about the subsystem
-        subsystem_info = self._extract_subsystem_info(system_obj)
-
-        # We have the state info stored
+    def set_state(self, state: SubsystemStatus):
+        if state == SubsystemStatus.PARTIALLY_ENABLED:
+            raise CiderBadActionException("Cannot set partially enabled state for an attribute")
+        
         state_value = (
-            subsystem_info.enabled_state if state else subsystem_info.disabled_state
+            self._enabled_state if state == SubsystemStatus.ENABLED else self._disabled_state
         )
 
-        # Grab session containing system
-        session = ca.GetDalObjectAction(self._configuration)(
-            self._session_name, "Session"
-        )
-
-        # Treat attribtues, components and relationships differently
-        if subsystem_info.type == "attribute":
-            self._set_attribute_state(subsystem_info, state_value, session)
-        elif subsystem_info.type == "component":
-            self._set_component_state(subsystem_info, state_value, session)
-        elif subsystem_info.type == "relationship":
-            self._set_relationship_state(subsystem_info, state_value)
-        else:
-            raise NotImplementedError(
-                "Subsystems must be either an attribute or a component"
-            )
-
-    def _set_attribute_state(self, subsystem_info: SubsystemInfo, state: Any, session):
-        # Set the state of an attribute
         SetAttributeValueSessionAction(self._configuration).action(
-            session,
-            subsystem_info.class_name,
-            subsystem_info.id,
-            state,
-            subsystem_info.affected_objects,
+            self._session_dal,
+            self._system_class,
+            self._system_id,
+            state_value,
+            self._affected_objects,
         )
 
-    def _set_relationship_state(self, subsystem_info: SubsystemInfo, state: Any):
-        # basically the same as _set_attribute_state but we need to get the dal
-        if state is None:
-            state = None
+    def get_affected_objects(self):
+        if self._affected_objects is None:
+            return []
+        
+        return self._affected_objects
 
-        else:
-            state = ca.GetDalObjectAction(self._configuration)(state[0], state[1])
+class ComponentExtractor(SubsystemExtractor):    
+    def get_state(self) -> SubsystemStatus:
 
         subsystem_dal = ca.GetDalObjectAction(self._configuration)(
-            subsystem_info.id, subsystem_info.class_name
+            self._system_id, self._system_class
         )
 
-        # Check if it's a list
-        if isinstance(
-            rel_list := ca.GetAttributeAction(self._configuration)(
-                subsystem_dal, subsystem_info.relationship_name
-            ),
-            list,
-        ):
-            # We're gonna just remove the enable and disabled states from the list
-            if subsystem_info.enabled_state is not None:
-                enabled_dal = ca.GetDalObjectAction(self._configuration)(
-                    subsystem_info.enabled_state[0], subsystem_info.enabled_state[1]
-                )
-                if enabled_dal in rel_list:
-                    rel_list.remove(enabled_dal)
+        return SubsystemStatus(not ca.CheckIsDisabledAction(self._configuration)(
+            subsystem_dal, self._session_name
+        ))
 
-            else:
-                enabled_dal = None
-
-            # If the state is None that indicates we should remove the relationship
-            if subsystem_info.disabled_state is not None:
-                disabled_dal = ca.GetDalObjectAction(self._configuration)(
-                    subsystem_info.disabled_state[0], subsystem_info.disabled_state[1]
-                )
-                if disabled_dal in rel_list:
-                    rel_list.remove(disabled_dal)
-
-            else:
-                disabled_dal = None
-
-            # Add state to relationship list
-            if state is not None:
-                rel_list.append(state)
-
-            # Set state info
-            state = rel_list
-
-        # Now update
-        ca.ChangeAttributeAction(self._configuration)(
-            subsystem_dal, subsystem_info.relationship_name, state
-        )
-
-        # Update the dal
-        ca.UpdateDalAction(self._configuration)(subsystem_dal)
-
-    def _set_component_state(self, subsystem_info: SubsystemInfo, state: Any, session):
-        """
-        Set the state of the component in the session
-        """
-
-        # Grab dal for subsystem
+    def set_state(self, state: SubsystemStatus):
+        if state == SubsystemStatus.PARTIALLY_ENABLED:
+            raise CiderBadActionException("Cannot set partially enabled state for a component")
+        
         subsystem_dal = ca.GetDalObjectAction(self._configuration)(
-            subsystem_info.id, subsystem_info.class_name
+            self._system_id, self._system_class
         )
 
-        # Disable it
         ca.DisableDalAction(self._configuration)(
             subsystem_dal, self._session_name, not state
         )
+        
+        ca.UpdateDalAction(self._configuration)(subsystem_dal)
+        ca.UpdateDalAction(self._configuration)(self._session_dal)
+        
+    def get_dal(self):
+        return ca.GetDalObjectAction(self._configuration)(self._system_id, self._system_class)
 
-        # Update
-        ca.UpdateDalAction(self._configuration)(session)
+
+class MultiItemExtractor(ItemExtractor):
+    def __init__(self, configuration: ConfigurationWrapper | None, session_name: str | None = None, system: Dict | None = None):
+        super().__init__(configuration, session_name)
+        
+        if self._configuration is not None and system is not None:
+            self.read_system(system)
+            
+    def read_system(self, system: Optional[Dict]):
+        if system is None or self._configuration is None or self._session_name is None:
+            return False
+
+        return True
+        
+
+class SystemExtractor(MultiItemExtractor):
+    def __init__(self, configuration: Optional[ConfigurationWrapper], session: Optional[str], system_name: Optional[str], system: Optional[Dict]):
+        self._attributes = []
+        self._components = []
+        self._system_names = []
+        
+        self._system_name = system_name
+
+        super().__init__(configuration, session, system)
+    
+    def read_system(self, system: Optional[Dict], system_name: Optional[str] = None):
+        # Just to allow this to be run at start up
+        if not super().read_system(system):
+            return
+        
+        self._system_name = system_name if system_name is not None else self._system_name
+        
+        self._top_level_segment = system.get("top_level_segment", "root-segment")
+
+        self._attributes = [AttributeExtractor(self._configuration,
+                                               self._session_name, s, self._top_level_segment)
+                            for s in system.get("attributes", [])]
+    
+        
+        self._components = [ComponentExtractor(self._configuration, self._session_name, s)
+                           for s in system.get("components", [])]
+        
+        self._system_names = list(set([s.system_name for s in self._attributes + self._components if s.is_system]))
+
+        if self._system_name is not None:
+            self._system_names.append(self._system_name)
+        else:
+            self._system_names.append("root")
+
+    @property
+    def system_names(self)->Sequence[str]:
+        return self._system_names
+    
+    def _check_subsystem_cond(self, subsystem: SubsystemExtractor, system_name: str | None):
+        if system_name is None or system_name==self._system_name:
+            return True
+        else:
+            return subsystem.system_name == system_name
+    
+    def get_state(self, system_name: Optional[str] = None)->SubsystemStatus | None:
+        states = [s.get_state() for s in self._attributes + self._components if self._check_subsystem_cond(s, system_name)]
+                
+        if len(states) == 0:
+            logging.warning(f"No states found for {system_name}")
+            return None
+        
+        if all([s == states[0] for s in states]) and states[0] is not None:
+            return states[0]
+        
+        return SubsystemStatus.PARTIALLY_ENABLED
+    
+    def set_state(self, state: SubsystemStatus, system_name: Optional[str]):        
+        for s in self._attributes + self._components:
+            if self._check_subsystem_cond(s,system_name):
+                s.set_state(state)
+                
+    def get_all_states(self):
+        # Just to allow this to be run at start up
+        if self._session_name is None or self._configuration is None:
+            return
+
+        return_dict = {}        
+        return_dict[self._system_name] = self.get_state()
+                
+        # Grab the other systems
+        return_dict.update({s: self.get_state(s) for s in self._system_names})
+        
+        return return_dict
+    
+    def get_components(self, system_name: Optional[str] = None):
+        return [s for s in self._components if self._check_subsystem_cond(s, system_name)]
+    
+    def get_attributes(self, system_name: Optional[str] = None):
+        return [s for s in self._attributes if self._check_subsystem_cond(s, system_name)]    
+
+class DetectorExtractor(MultiItemExtractor):
+    def __init__(self, configuration: ConfigurationWrapper, session: str | None, detector_config: Optional[Dict]):
+        self._system_extractors = []
+        super().__init__(configuration, session, detector_config)
+
+    def read_system(self, detector_config: Dict):
+        if not super().read_system(detector_config):
+                return
+        
+        self._system_extractors = []
+
+        extracted_systems = detector_config.get("Systems", [])
+        system_name = list(detector_config.keys())[0]
+        
+        
+        for s in extracted_systems:
+            try:
+                system_name = list(s.keys())[0]
+                
+                system_info = list(s.values())[0]
+
+                self._system_extractors.append(SystemExtractor(self._configuration, self._session_name, system_name, system_info))
+            except CiderBadActionException:
+                continue
+            except Exception as e:
+                logging.error(f"{traceback.format_exc()}")
+                logging.error(f"Could not extract system {system_name} due to {e}")
+
+        
+    def set_state(self, state: SubsystemStatus, state_name: str):
+        for system in self._system_extractors:
+            if state_name in system.system_names:
+                system.set_state(state, state_name)
+           
+    def get_state(self, state_name: str):
+        for system in self._system_extractors:
+            if state_name in system.system_names:
+                return system.get_state(state_name)
+        
+        return SubsystemStatus.PARTIALLY_ENABLED
+    
+    @property
+    def systems(self):
+        return self._system_extractors
+    
+    def get_all_states(self):
+        return_dict = {}
+        
+        # grab big dict        
+        for system in self._system_extractors:
+            return_dict.update(system.get_all_states())
+        
+        return return_dict
