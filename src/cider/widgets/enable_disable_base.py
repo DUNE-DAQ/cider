@@ -1,5 +1,6 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 import cider.interfaces.actions.actions as ca
+from cider.interfaces.workflows.extract_system_info import SubsystemStatus
 
 from textual.visual import SupportsVisual
 from textual.widgets import Static, Button
@@ -61,22 +62,24 @@ class EnableDisablePanel(Static):
 
         self._button_list = self.generate_button_list()
 
+        logging.info(self._button_list)
+
         # Need default initial states
         self._default_states = {
-            k: self.check_is_disabled(k, b) for k, b in self._button_list.items()
+            k: self.check_button_state(k, b) for k, b in self._button_list.items()
         }
 
         # Update everything else!
         self.post_message(self.Changed(self._configuration, self._session_name))
 
-    def check_is_disabled(self, *args, **kwargs) -> bool:
+    def check_button_state(self, *args, **kwargs) -> bool:
         raise NotImplementedError("Check is disabled not implemented for class")
 
     def compose(self):
         with ScrollableContainer(id="buttons_panel"):
             for button, information in self._button_list.items():
 
-                if self.check_is_disabled(button, information):
+                if self.check_button_state(button, information):
                     name_str = f"{button} (Disabled)"
                     classes = (
                         "detector_subsystem_button detector_subsystem_button_disabled"
@@ -105,7 +108,7 @@ class EnableDisablePanel(Static):
         self.update_button_styles()
         self.post_message(self.Changed(self._configuration, self._session_name))
         logging.debug(
-            f"Button {button_name} {'disabled' if self.check_is_disabled(button_name, self._button_list[button_name]) else 'enabled'}"
+            f"Button {button_name} {'disabled' if self.check_button_state(button_name, self._button_list[button_name]) else 'enabled'}"
         )
 
     def _button_action(self, *args, **kwargs):
@@ -135,7 +138,7 @@ class EnableDisablePanel(Static):
 
         for button, information in self._button_list.items():
             # Check if the button is disabled
-            state = self.check_is_disabled(button, information)
+            state = self.check_button_state(button, information)
 
             if state == self._default_states[button]:
                 continue
@@ -148,7 +151,7 @@ class EnableDisablePanel(Static):
 
     def get_current_states(self):
         # Return a dictionary of the current states for mapping purposes
-        return {k: self.check_is_disabled(k, b) for k, b in self._button_list.items()}
+        return {k: self.check_button_state(k, b) for k, b in self._button_list.items()}
 
     def get_full_state_info(self):
         # Full information is just the button list dict
@@ -163,11 +166,25 @@ class EnableDisablePanel(Static):
             except Exception:
                 return
 
-            if self.check_is_disabled(button, information):
+            button_state = self.check_button_state(button, information)
+
+            if button_state == SubsystemStatus.DISABLED:
                 button_widget.remove_class("detector_subsystem_button_enabled")
+                button_widget.remove_class("detector_subsystem_button_partial")
                 button_widget.add_class("detector_subsystem_button_disabled")
                 button_widget.label = f"{button} (Disabled)"
-            else:
+
+            elif button_state == SubsystemStatus.ENABLED:
                 button_widget.remove_class("detector_subsystem_button_disabled")
+                button_widget.remove_class("detector_subsystem_button_partial")
                 button_widget.add_class("detector_subsystem_button_enabled")
                 button_widget.label = f"{button} (Enabled)"
+
+            elif button_state == SubsystemStatus.PARTIALLY_ENABLED:
+                button_widget.remove_class("detector_subsystem_button_enabled")
+                button_widget.remove_class("detector_subsystem_button_disabled")
+                button_widget.add_class("detector_subsystem_button_partial")
+                button_widget.label = f"{button} (Partially Enabled)"
+
+            else:
+                raise ValueError(f"Unknown button state {button_state}")

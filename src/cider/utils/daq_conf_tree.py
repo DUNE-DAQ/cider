@@ -1,9 +1,11 @@
 # Essentially the tree from https://github.com/DUNE-DAQ/daqconf/blob/develop/scripts/daqconf_inspector
 
 import cider.interfaces.actions.actions as ca
-from cider.interfaces.workflows.get_objects_in_session import GetObjectsInSessionAction
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-from cider.interfaces.workflows.extract_system_info import SystemInfoExtractor
+from cider.interfaces.workflows.extract_system_info import (
+    DetectorExtractor,
+    SubsystemStatus,
+)
 
 
 from rich.tree import Tree
@@ -39,6 +41,20 @@ class DaqConfTreeBase(ABC):
     def print_tree(self):
         """Print the tree."""
         return self._tree
+
+    def get_text_colour_message(self, system_state: SubsystemStatus | None):
+
+        if system_state == SubsystemStatus.ENABLED:
+            colour = "chartreuse4"
+        elif system_state == SubsystemStatus.DISABLED:
+            colour = "grey35"
+        elif system_state == SubsystemStatus.PARTIALLY_ENABLED:
+            colour = "orange"
+        else:
+            raise ValueError(f"Invalid state {system_state}")
+
+        # Just so we can make it readable!
+        return colour, system_state.name.replace("_", " ")
 
     @abstractmethod
     def generate_tree(self):
@@ -166,7 +182,7 @@ class DaqConfTree(DaqConfTreeBase):
 
 class ComponentLevelTree(DaqConfTreeBase):
     """
-    Class To Represent Multicomponent objects
+    Class to represent multi-component objects in a tree structure.
     """
 
     def __init__(
@@ -175,89 +191,135 @@ class ComponentLevelTree(DaqConfTreeBase):
         session: str | None = None,
         system_info: dict = {},
         label: str = "",
-        disabled_items=[],
+        disabled_items: list = [],
     ):
-        # System info dict
         self._system_info = system_info
-        # Disabled items, obtained from DaqConfTree usually
         self._disabled_items = disabled_items
-        # Extractor
-        self._extractor = SystemInfoExtractor(configuration, session)
-        # Label for the top level branch
+        self._extractor = DetectorExtractor(configuration, session, system_info)
         self._label = label
 
         super().__init__(configuration, session)
 
-    def generate_tree(self):
+    def read_system(self, system_info: dict):
         """
-        Actually generate the full tree
+        Update the system information and reload the extractor.
         """
-        self._tree = Tree(f"[bold deep_pink4] {self._label}")
+        self._system_info = system_info
+        self._extractor.read_system(system_info)
 
-        # Get the labels for each system system
-        system_labels = list(self._system_info.keys())
+    def generate_tree(self) -> Tree:
+        """Generate the tree structure for the system."""
+        self._tree = Tree(f"[bold red1] {self._system_info['view_panel']}")
 
-        # Grab the session
-        session_dal = ca.GetDalObjectAction(self._configuration)(
-            self._session, "Session"
-        )
-
-        # Loop over each system
-        for label in system_labels:
-            system_enabled = self._system_info[label]["enabled"]
-            if system_enabled:
-                colour = "chartreuse4"
-                text = "ENABLED"
-            else:
-                colour = "grey35"
-                text = "DISABLED"
-
-            # Full system tree
-            system_tree = self._tree.add(f"[bold {colour}]{label}     {text}")
-
-            # Loop over each subsystem
-            for subsystem in self._system_info[label]["subsystems"]:
-                # Check state of each object
-                enabled = self._extractor.check_single_object_state(
-                    subsystem, system_enabled
-                )
-
-                # Okay now we can grab each component
-                if subsystem["type"] == "attribute":
-                    specific_comps = GetObjectsInSessionAction(self._configuration)(
-                        session_dal,
-                        subsystem["class"],
-                        subsystem.get("affected_objects", None),
-                    )
-
-                    system_name = subsystem["id"]
-
-                elif (
-                    subsystem["type"] == "component"
-                    or subsystem["type"] == "relationship"
-                ):
-                    # Specific component
-                    specific_comps = [
-                        ca.GetDalObjectAction(self._configuration)(
-                            subsystem["id"], subsystem["class"]
-                        )
-                    ]
-                    system_name = ""
-
-                    # Relationships need slightly special treatment
-                    if subsystem["type"] == "relationship":
-                        system_name += subsystem["relationship_name"]
-
-                for c in specific_comps:
-                    if enabled and c not in self._disabled_items:
-                        colour = "chartreuse3"
-                        text = "[bold]ENABLED"
-                    else:
-                        colour = "grey35"
-                        text = "[bold]DISABLED"
-
-                    system_tree.add(
-                        f"[{colour}]{ca.GetAttributeAction(self._configuration)(c, 'id')} {system_name} {text}"
-                    )
+        for system in self._extractor.systems:
+            # Start with is_disabled=False for the top-level system
+            self._add_system_to_tree(system, is_disabled=False)
 
         return self._tree
+
+    def _add_system_to_tree(self, system, is_disabled: bool):
+        """Add a system and its subsystems to the tree."""
+        # If the system is disabled, propagate the disabled state to all children
+        system_disabled = is_disabled or (
+            system.get_state() == SubsystemStatus.DISABLED
+        )
+        colour, message = self.get_text_colour_message(
+            SubsystemStatus.DISABLED if system_disabled else system.get_state()
+        )
+        system_tree = self._tree.add(
+            f"[{colour}]{system.system_names[-1]} [bold]{message}"
+        )
+
+        for subsyst in system.system_names:
+            self._add_subsystem_to_tree(system, subsyst, system_tree, system_disabled)
+
+    def _add_subsystem_to_tree(self, system, subsyst, system_tree, is_disabled: bool):
+        """Add a subsystem and its components to the tree."""
+        # If the subsystem is disabled, propagate the disabled state to all children
+        subsystem_disabled = is_disabled or (
+            system.get_state(subsyst) == SubsystemStatus.DISABLED
+        )
+        colour, message = self.get_text_colour_message(
+            SubsystemStatus.DISABLED
+            if subsystem_disabled
+            else system.get_state(subsyst)
+        )
+
+        if subsyst != system.system_names[-1]:
+            subsyst_tree = system_tree.add(f"[{colour}]{subsyst}   [bold]{message}")
+        else:
+            subsyst_tree = system_tree
+
+        self._add_components_to_tree(system, subsyst, subsyst_tree, subsystem_disabled)
+        self._add_attributes_to_tree(system, subsyst, subsyst_tree, subsystem_disabled)
+
+    def _add_components_to_tree(self, system, subsyst, subsyst_tree, is_disabled: bool):
+        """Add components of a subsystem to the tree."""
+        for comp in system.get_components(subsyst):
+            if subsyst == system.system_names[-1] and comp.system_name is not None:
+                continue
+
+            # If the parent is disabled, mark the component as disabled
+            component_disabled = is_disabled or (
+                comp.get_state() == SubsystemStatus.DISABLED
+            )
+            colour, message = self.get_text_colour_message(
+                SubsystemStatus.DISABLED if component_disabled else comp.get_state()
+            )
+            subsyst_tree.add(f"[{colour}]{comp.system_id}   [bold]{message}")
+
+    def _add_attributes_to_tree(self, system, subsyst, subsyst_tree, is_disabled: bool):
+        """Add attributes and their affected objects to the tree."""
+        attribute_objs = self._get_unique_attribute_objects(system, subsyst)
+        attribute_tree = self._build_attribute_tree(attribute_objs, is_disabled)
+
+        for attr in system.get_attributes(subsyst):
+            if subsyst == system.system_names[-1] and attr.system_name is not None:
+                continue
+
+            self._add_attribute_to_tree(attr, attribute_tree, is_disabled)
+
+        for attr_tree in attribute_tree.values():
+            subsyst_tree.add(attr_tree)
+
+    def _get_unique_attribute_objects(self, system, subsyst):
+        """Get unique attribute objects for a subsystem."""
+        attribute_objs = []
+        for attr in system.get_attributes(subsyst):
+            attribute_objs.extend(attr.get_affected_object_dals())
+
+        return list(set(attribute_objs))
+
+    def _build_attribute_tree(self, attribute_objs, system_disabled: bool = False):
+        """Build a tree structure for attribute objects."""
+        attribute_tree = {}
+        for obj in attribute_objs:
+            obj_id = ca.GetAttributeAction(self._configuration)(obj, "id")
+            # Check if the attribute object is in the disabled list
+            obj_disabled = obj in self._disabled_items or system_disabled
+
+            colour, message = self.get_text_colour_message(
+                SubsystemStatus.DISABLED if obj_disabled else SubsystemStatus.ENABLED
+            )
+            attribute_tree[obj_id] = Tree(f"[{colour}]{obj_id}   [bold]{message}")
+
+        return attribute_tree
+
+    def _add_attribute_to_tree(self, attr, attribute_tree, is_disabled: bool):
+        """Add an attribute and its affected objects to the attribute tree."""
+        for obj_name in attr.get_affected_object_names():
+            if obj_name in attribute_tree:
+                # If the attribute object is in the disabled list, mark it as disabled
+                obj_disabled = (
+                    is_disabled
+                    or (attr.get_state_for_obj(obj_name) == SubsystemStatus.DISABLED)
+                    or (attr.get_affected_object() in self._disabled_items)
+                )
+                colour, message = self.get_text_colour_message(
+                    SubsystemStatus.DISABLED
+                    if obj_disabled
+                    else attr.get_state_for_obj(obj_name)
+                )
+                attribute_tree[obj_name].add(
+                    f"[{colour}]{attr.system_id}   [bold]{message}"
+                )

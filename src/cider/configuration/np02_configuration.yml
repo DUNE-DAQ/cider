@@ -1,114 +1,41 @@
-# Demo
-# Any system can be defined in the following way
-# FullSystemName:
-#   subsystems:
-#     - type: component/relationship/attribute
-#       class: ClassName: (e.g. Segment, ReadoutApplication, DFApplication): Affected class or class of specific object
-#       id: Name of class or attribute
-#       enabled_state: State of the class or attribute when enabled
-#       disabled_state: State of the class or attribute when disabled
-#       relationship_name: Name of the relationship [Only for relationship]
-#       affected_objects: List of objects affected by the trigger [Only for attribute]
-#  enabled: true/false default enable/disable state if the system is defined incorrectly in the configuration file
-
-
-# Full System
 General:
+  configuration: "sessions/np02-session.data.xml"
+  download_directory: "run_configs"
+  use_path: False
   default_config: "np02-session.data.xml"
 
 PanelOptions:
-  # Triggers
-  Trigger:
-    label: "trigger"
-    view_panel: "Trigger View"
+
+  Detector:
+    label: "detector"
+    view_panel: "Detector View"
     panel_type: "multisystem"
 
-    # Buttons
-    Buttons:
-      TPG TPC:
-        subsystems:
-          - id: tp_generation_enabled
-            type: attribute
-            class: ReadoutApplication
-            affected_objects: [runp02srv001eth0, runp02srv002eth0]
-            enabled_state: true
-            disabled_state: false
-          - id: ta_generation_enabled
-            type: attribute
-            affected_objects: [runp02srv001eth0, runp02srv002eth0]
-            class: ReadoutApplication
-            enabled_state: true
-            disabled_state: false
-          - id: tc-maker-tpc
-            class: TriggerApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-          - id: tp-stream-writer
-            class: TPStreamWriterApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+    Systems:
+      - TPC:
+          top_level_segment: "root-segment"
 
-      TPG PDS:
-          subsystems:
-          - id: tp_generation_enabled
-            type: attribute
-            class: ReadoutApplication
-            affected_objects: [runp02srv030flx4]
-            enabled_state: true
-            disabled_state: false
-          - id: ta_generation_enabled
-            type: attribute
-            class: ReadoutApplication
-            affected_objects: [runp02srv030flx4]
-            enabled_state: true
-            disabled_state: false
-          enabled: false
+          components:
+            # - id: tpc-segment
+            #   class: segment
 
-      TPG APA:
-        subsystems:
-          - id: tp_generation_enabled
-            type: attribute
-            class: ReadoutApplication
-            affected_objects: [runp04srv031eth11, runp04srv031eth10, runp04srv031eth01, runp04srv031eth00]
-            enabled_state: true
-            disabled_state: false
-          - id: ta_generation_enabled
-            type: attribute
-            affected_objects: [runp04srv031eth11, runp04srv031eth10, runp04srv031eth01, runp04srv031eth00]
-            class: ReadoutApplication
-            enabled_state: true
-            disabled_state: false
-          - id: tc-maker-tpc
-            class: TriggerApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-          - id: tp-stream-writer-apa1
-            class: TPStreamWriterApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-          - id: tp-stream-writer-apa2
-            class: TPStreamWriterApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-          - id: tp-stream-writer-apa3
-            class: TPStreamWriterApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
-          - id: tp-stream-writer-apa4
-            class: TPStreamWriterApplication
-            type: component
-            enabled_state: true
-            disabled_state: false
+            - id: crp4-segment
+              class: Segment
+              system_label: TPC CRP4
+              separate_system: True
+
+            - id: crp5-segment
+              class: Segment
+              system_label: TPC CRP5
+              separate_system: True
 
 
-        enabled: true
+      - PDS:
+          top_level_segment: "pds-segment"
+
+          components:
+            - id: pds-segment
+              class: Segment
 
   # Dataflow
   Dataflow:
@@ -117,81 +44,37 @@ PanelOptions:
     classes:
       - "DFApplication"
 
-  # Detector Subsystems
-  Detector:
-    label: "detector"
-    view_panel: "Detector View"
+
+  Trigger:
+    label: "trigger"
+    view_panel: "Trigger View"
     panel_type: "multisystem"
 
-    Buttons:
-      TPC:
-        subsystems:
-          - type: component
-            class: Segment
-            id: tpc-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
 
-      CRP4:
-        subsystems:
-          - type: component
-            class: Segment
-            id: crp4-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+    Systems:
+      - TPC TPG:
+          top_level_segment: "crp4-segment"
       
-      CRP5:
-        subsystems:
-          - type: component
-            class: Segment
-            id: crp5-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+          attributes:
+              - id: tp_generation_enabled
+                class: ReadoutApplication
 
-      PDS:
-        subsystems:
-          - type: component
-            class: Segment
-            id: pds-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+              - id: ta_generation_enabled
+                class: ReadoutApplication
 
+          components:
+            - id: tc-maker-tpc
+              class: TriggerApplication
+            - id: tp-stream-writer
+              class: TPStreamWriterApplication
 
-      APA 1:
-        subsystems:
-          - type: component
-            id: apa1-segment
-            class: Segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+      - PDS TPG:
+          top_level_segment: "pds-segment"
 
-      APA 2:
-        subsystems:
-          - type: component
-            class: Segment
-            id: apa2-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
-      APA 3:
-        subsystems:
-          - type: component
-            class: Segment
-            id: apa3-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true
+          attributes:
+              - id: tp_generation_enabled
+                class: ReadoutApplication
+    
+              - id: ta_generation_enabled
+                class: ReadoutApplication
 
-      APA 4:
-        subsystems:
-          - type: component
-            class: Segment
-            id: apa4-segment
-            enabled_state: true
-            disabled_state: false
-        enabled: true

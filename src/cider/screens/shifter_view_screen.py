@@ -4,12 +4,13 @@ from textual.widgets import TabbedContent, TabPane, Header, Footer, Button, Stat
 from textual import on
 from textual.css.query import NoMatches
 
+from cider.widgets.multicomponent_panel import MultiComponentEnableDisablePanel
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
 from cider.widgets.options_panel import OptionPanel
 from cider.widgets.file_io_panel import FileIOPanel
 from cider.utils.consolidate_file import ConsolidateFile
-from cider.utils.daq_conf_tree import DaqConfTree, ComponentLevelTree
+from cider.utils.daq_conf_tree import DaqConfTree
 from cider.utils.shifter_config_reader import ShifterConfigReader
 
 import traceback
@@ -240,23 +241,11 @@ class ShifterViewScreen(Screen):
         disabled = main_tree.disabled_objs
 
         # Update component level trees
-        for panel_name in self._config.panel_labels:
-            self.update_tree(panel_name, configuration, session, disabled)
+        for panel in self.query("MultiComponentEnableDisablePanel"):
+            self.update_tree(panel, disabled)
 
-    def update_tree(self, panel_name, configuration, session, disabled):
+    def update_tree(self, panel: MultiComponentEnableDisablePanel, disabled: list = []):
         # Get current state of panel
-        try:
-            panel_state = self.query_one(
-                f"#{panel_name}_subsystem_panel"
-            ).get_full_state_info()
-
-            new_tree = ComponentLevelTree(
-                configuration, session, panel_state, panel_name, disabled
-            )
-
-            # Now we just need the static widget
-            self.query_one(f"#tree_view_{panel_name}").update(new_tree.print_tree())
-        except Exception:
-            # The loop is a little dumb and also does single-component items so we just skip this
-            logging.debug(f"Couldn't update {panel_name} tree")
-            logging.debug(traceback.format_exc())
+        self.query_one(f"#tree_view_{panel.id.replace('_subsystem_panel', '')}").update(
+            panel.get_tree(disabled).print_tree()
+        )
