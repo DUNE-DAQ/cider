@@ -62,7 +62,9 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
 
         # Enabled first
         buttons = sorted(
-            buttons, key=lambda x: self.check_button_state(get_id(x, "id"), get_class(x)), reverse=True
+            buttons,
+            key=lambda x: self.check_button_state(get_id(x, "id"), get_class(x)),
+            reverse=True,
         )
 
         # We want enabled first!
@@ -83,6 +85,10 @@ class SingleComponentEnableDisablePanel(EnableDisablePanel):
 
         ca.UpdateDalAction(self._configuration)(session_dal)
 
-    def check_button_state(self, button: str, information: str | List[str]) -> SubsystemStatus:
+    def check_button_state(
+        self, button: str, information: str | List[str]
+    ) -> SubsystemStatus:
         dal = ca.GetDalObjectAction(self._configuration)(button, information)
-        return SubsystemStatus(not ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name))
+        return SubsystemStatus(
+            not ca.CheckIsDisabledAction(self._configuration)(dal, self._session_name)
+        )

@@ -7,12 +7,13 @@ from textual.containers import ScrollableContainer
 import logging
 import yaml
 
-'''
+"""
 - Name:
     top_level_segment: seg
     
 
-'''
+"""
+
 
 # Class for reading a YAML config and producing panels
 class ShifterConfigReader:
@@ -64,18 +65,17 @@ class ShifterConfigReader:
                 map_list.append(map)
 
         return panel_list, map_list, panel_labels
-    
+
     def _parse_options(self, panel_name: str, opts: dict):
         panel_type = opts.get("panel_type", None)
         if panel_type == "singlesystem":
             return self.initialise_single_system(panel_name, opts), None
-        
+
         elif panel_type == "multisystem":
             return self.initialise_multi_system(panel_name, opts)
-        
+
         else:
             raise ValueError(f"Unknown panel type {opts.get('panel_type')}")
-
 
     def initialise_single_system(self, panel_name, opts):
         panel = SingleComponentEnableDisablePanel(
@@ -96,9 +96,9 @@ class ShifterConfigReader:
         )
 
     def initialise_multi_system(self, panel_name, opts):
-        
+
         logging.info(f"{panel_name} :: {opts}")
-        
+
         panel = MultiComponentEnableDisablePanel(
             None,
             None,
@@ -107,16 +107,16 @@ class ShifterConfigReader:
             classes="detector_subsystem",
         )
 
-        panel_tab =  self._initalise_system(panel_name, opts, panel)
-        
+        panel_tab = self._initalise_system(panel_name, opts, panel)
+
         map = ScrollableContainer(
             Static(
                 panel.get_tree().print_tree(),
-                id = f"tree_view_{opts.get('label', 'MultiSystem')}"
+                id=f"tree_view_{opts.get('label', 'MultiSystem')}",
             ),
             id=f"{opts.get('label', 'MultiSystem')}_view_container",
         )
-        
+
         map_tab = self._initalise_system(opts.get("view_panel", ""), opts, map)
 
         return panel_tab, map_tab

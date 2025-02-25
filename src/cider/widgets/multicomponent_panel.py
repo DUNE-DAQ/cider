@@ -1,10 +1,14 @@
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 from cider.widgets.enable_disable_base import EnableDisablePanel
-from cider.interfaces.workflows.extract_system_info import SubsystemStatus, DetectorExtractor
+from cider.interfaces.workflows.extract_system_info import (
+    SubsystemStatus,
+    DetectorExtractor,
+)
 from cider.utils.daq_conf_tree import ComponentLevelTree
 
 from typing import Dict, Optional
 from textual.visual import SupportsVisual
+
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
     """
@@ -39,7 +43,7 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
             classes=classes,
             disabled=disabled,
         )
-        
+
         self._object_list = object_list
 
         self._extractor = DetectorExtractor(configuration, session_name, object_list)
@@ -54,30 +58,29 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
         # Grabs state information for each button
         self._extractor.read_system(self._object_list)
 
-        # Makes sure that the button states are set correctly and consistent      
-                  
+        # Makes sure that the button states are set correctly and consistent
+
         return self._extractor.get_all_states()
 
     def _button_action(self, _, button_name: str) -> None:
 
         current_state = self._extractor.get_state(button_name)
-        
-        if current_state==SubsystemStatus.PARTIALLY_ENABLED:
+
+        if current_state == SubsystemStatus.PARTIALLY_ENABLED:
             current_state = SubsystemStatus.DISABLED
 
         desired_state = SubsystemStatus(not bool(current_state))
 
-        self._extractor.set_state(
-            desired_state, button_name
-        )
+        self._extractor.set_state(desired_state, button_name)
 
     def check_button_state(self, button: str, _) -> SubsystemStatus:
         return SubsystemStatus(self._extractor.get_state(button))
-    
 
-    def get_tree(self, disabled_states = []):
-        tree = ComponentLevelTree(configuration=self._configuration,
-                                  session=self._session_name,
-                                  system_info=self._object_list,
-                                  disabled_items=disabled_states)
+    def get_tree(self, disabled_states=[]):
+        tree = ComponentLevelTree(
+            configuration=self._configuration,
+            session=self._session_name,
+            system_info=self._object_list,
+            disabled_items=disabled_states,
+        )
         return tree

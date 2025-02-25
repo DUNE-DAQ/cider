@@ -241,9 +241,11 @@ class ShifterViewScreen(Screen):
         disabled = main_tree.disabled_objs
 
         # Update component level trees
-        for panel in self.query("MultiComponentEnableDisablePanel"):            
+        for panel in self.query("MultiComponentEnableDisablePanel"):
             self.update_tree(panel, disabled)
 
     def update_tree(self, panel: MultiComponentEnableDisablePanel, disabled: list = []):
-        # Get current state of panel        
-        self.query_one(f"#tree_view_{panel.id.replace('_subsystem_panel', '')}").update(panel.get_tree(disabled).print_tree())
+        # Get current state of panel
+        self.query_one(f"#tree_view_{panel.id.replace('_subsystem_panel', '')}").update(
+            panel.get_tree(disabled).print_tree()
+        )

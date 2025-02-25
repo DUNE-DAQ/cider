@@ -2,11 +2,15 @@
 
 import cider.interfaces.actions.actions as ca
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
-from cider.interfaces.workflows.extract_system_info import DetectorExtractor, SubsystemStatus
+from cider.interfaces.workflows.extract_system_info import (
+    DetectorExtractor,
+    SubsystemStatus,
+)
 
 
 from rich.tree import Tree
 from abc import ABC, abstractmethod
+
 
 class DaqConfTreeBase(ABC):
     """
@@ -39,7 +43,7 @@ class DaqConfTreeBase(ABC):
         return self._tree
 
     def get_text_colour_message(self, system_state: SubsystemStatus | None):
-        
+
         if system_state == SubsystemStatus.ENABLED:
             colour = "chartreuse4"
         elif system_state == SubsystemStatus.DISABLED:
@@ -48,10 +52,9 @@ class DaqConfTreeBase(ABC):
             colour = "orange"
         else:
             raise ValueError(f"Invalid state {system_state}")
-        
+
         # Just so we can make it readable!
         return colour, system_state.name.replace("_", " ")
-            
 
     @abstractmethod
     def generate_tree(self):
@@ -176,6 +179,7 @@ class DaqConfTree(DaqConfTreeBase):
     def disabled_objs(self):
         return self._disabled_objs
 
+
 class ComponentLevelTree(DaqConfTreeBase):
     """
     Class to represent multi-component objects in a tree structure.
@@ -216,11 +220,15 @@ class ComponentLevelTree(DaqConfTreeBase):
     def _add_system_to_tree(self, system, is_disabled: bool):
         """Add a system and its subsystems to the tree."""
         # If the system is disabled, propagate the disabled state to all children
-        system_disabled = is_disabled or (system.get_state() == SubsystemStatus.DISABLED)
+        system_disabled = is_disabled or (
+            system.get_state() == SubsystemStatus.DISABLED
+        )
         colour, message = self.get_text_colour_message(
             SubsystemStatus.DISABLED if system_disabled else system.get_state()
         )
-        system_tree = self._tree.add(f"[{colour}]{system.system_names[-1]} [bold]{message}")
+        system_tree = self._tree.add(
+            f"[{colour}]{system.system_names[-1]} [bold]{message}"
+        )
 
         for subsyst in system.system_names:
             self._add_subsystem_to_tree(system, subsyst, system_tree, system_disabled)
@@ -228,9 +236,13 @@ class ComponentLevelTree(DaqConfTreeBase):
     def _add_subsystem_to_tree(self, system, subsyst, system_tree, is_disabled: bool):
         """Add a subsystem and its components to the tree."""
         # If the subsystem is disabled, propagate the disabled state to all children
-        subsystem_disabled = is_disabled or (system.get_state(subsyst) == SubsystemStatus.DISABLED)
+        subsystem_disabled = is_disabled or (
+            system.get_state(subsyst) == SubsystemStatus.DISABLED
+        )
         colour, message = self.get_text_colour_message(
-            SubsystemStatus.DISABLED if subsystem_disabled else system.get_state(subsyst)
+            SubsystemStatus.DISABLED
+            if subsystem_disabled
+            else system.get_state(subsyst)
         )
 
         if subsyst != system.system_names[-1]:
@@ -248,7 +260,9 @@ class ComponentLevelTree(DaqConfTreeBase):
                 continue
 
             # If the parent is disabled, mark the component as disabled
-            component_disabled = is_disabled or (comp.get_state() == SubsystemStatus.DISABLED)
+            component_disabled = is_disabled or (
+                comp.get_state() == SubsystemStatus.DISABLED
+            )
             colour, message = self.get_text_colour_message(
                 SubsystemStatus.DISABLED if component_disabled else comp.get_state()
             )
@@ -276,17 +290,16 @@ class ComponentLevelTree(DaqConfTreeBase):
 
         return list(set(attribute_objs))
 
-    def _build_attribute_tree(self, attribute_objs, system_disabled: bool=False):
+    def _build_attribute_tree(self, attribute_objs, system_disabled: bool = False):
         """Build a tree structure for attribute objects."""
         attribute_tree = {}
         for obj in attribute_objs:
-            obj_id = ca.GetAttributeAction(self._configuration)(obj, 'id')
+            obj_id = ca.GetAttributeAction(self._configuration)(obj, "id")
             # Check if the attribute object is in the disabled list
             obj_disabled = obj in self._disabled_items or system_disabled
 
             colour, message = self.get_text_colour_message(
                 SubsystemStatus.DISABLED if obj_disabled else SubsystemStatus.ENABLED
-
             )
             attribute_tree[obj_id] = Tree(f"[{colour}]{obj_id}   [bold]{message}")
 
@@ -297,9 +310,16 @@ class ComponentLevelTree(DaqConfTreeBase):
         for obj_name in attr.get_affected_object_names():
             if obj_name in attribute_tree:
                 # If the attribute object is in the disabled list, mark it as disabled
-                obj_disabled = is_disabled or (attr.get_state_for_obj(obj_name) == SubsystemStatus.DISABLED) \
+                obj_disabled = (
+                    is_disabled
+                    or (attr.get_state_for_obj(obj_name) == SubsystemStatus.DISABLED)
                     or (attr.get_affected_object() in self._disabled_items)
-                colour, message = self.get_text_colour_message(
-                    SubsystemStatus.DISABLED if obj_disabled else attr.get_state_for_obj(obj_name)
                 )
-                attribute_tree[obj_name].add(f"[{colour}]{attr.system_id}   [bold]{message}")
+                colour, message = self.get_text_colour_message(
+                    SubsystemStatus.DISABLED
+                    if obj_disabled
+                    else attr.get_state_for_obj(obj_name)
+                )
+                attribute_tree[obj_name].add(
+                    f"[{colour}]{attr.system_id}   [bold]{message}"
+                )

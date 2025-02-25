@@ -8,6 +8,7 @@ from textual.containers import ScrollableContainer
 from textual.message import Message
 import logging
 
+
 class EnableDisablePanel(Static):
     """
     Base class for all of the enable/disable button panel
@@ -60,7 +61,7 @@ class EnableDisablePanel(Static):
         self._configuration = configuration
 
         self._button_list = self.generate_button_list()
-        
+
         logging.info(self._button_list)
 
         # Need default initial states
@@ -172,18 +173,18 @@ class EnableDisablePanel(Static):
                 button_widget.remove_class("detector_subsystem_button_partial")
                 button_widget.add_class("detector_subsystem_button_disabled")
                 button_widget.label = f"{button} (Disabled)"
-  
+
             elif button_state == SubsystemStatus.ENABLED:
                 button_widget.remove_class("detector_subsystem_button_disabled")
                 button_widget.remove_class("detector_subsystem_button_partial")
                 button_widget.add_class("detector_subsystem_button_enabled")
                 button_widget.label = f"{button} (Enabled)"
-  
+
             elif button_state == SubsystemStatus.PARTIALLY_ENABLED:
                 button_widget.remove_class("detector_subsystem_button_enabled")
                 button_widget.remove_class("detector_subsystem_button_disabled")
                 button_widget.add_class("detector_subsystem_button_partial")
                 button_widget.label = f"{button} (Partially Enabled)"
-                
+
             else:
                 raise ValueError(f"Unknown button state {button_state}")
