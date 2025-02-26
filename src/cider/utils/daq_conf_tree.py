@@ -235,7 +235,7 @@ class ComponentLevelTree(DaqConfTreeBase):
             f"[{colour}]{system.system_names[-1]} [bold]{message}"
         )
 
-        for subsyst in system.system_names:
+        for subsyst in system.system_names[::-1]:
             self._add_subsystem_to_tree(system, subsyst, system_tree, system_disabled)
 
     def _add_subsystem_to_tree(self, system, subsyst, system_tree, is_disabled: bool):
