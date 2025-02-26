@@ -301,7 +301,7 @@ class ComponentLevelTree(DaqConfTreeBase):
         for obj in attribute_objs:
             obj_id = ca.GetAttributeAction(self._configuration)(obj, "id")
             # Check if the attribute object is in the disabled list
-            obj_disabled = obj in self._disabled_items 
+            obj_disabled = obj in self._extractor.get_disabled_dals() 
             
             if system_disabled and not obj_disabled:
                 status = SubsystemStatus.PARTIALLY_ENABLED

@@ -183,9 +183,7 @@ class AttributeExtractor(SubsystemExtractor):
         state = current_states[0]
 
         for s, a in zip(current_states, self._affected_objects):
-            
-            a_dal = ca.GetDalObjectAction(self._configuration)(a, self._system_class)
-            
+                        
             if s != state:        
                 return SubsystemStatus.PARTIALLY_ENABLED
 
