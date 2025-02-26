@@ -10,7 +10,6 @@ from cider.exceptions import CiderBadActionException
 
 from rich.tree import Tree
 from abc import ABC, abstractmethod
-import logging
 
 class DaqConfTreeBase(ABC):
     """
@@ -223,8 +222,6 @@ class ComponentLevelTree(DaqConfTreeBase):
         
         state = SubsystemStatus(self._extractor.get_state(system.system_name))
         system_disabled = is_disabled or state == SubsystemStatus.DISABLED
-
-        logging.info(f"Adding system {system.system_name} with state {state}")        
             
         colour, message = self.get_text_colour_message(
             state
