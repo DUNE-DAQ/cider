@@ -221,7 +221,7 @@ class ComponentLevelTree(DaqConfTreeBase):
         """Add a system and its subsystems to the tree."""
         # If the system is disabled, propagate the disabled state to all children
         
-        state = SubsystemStatus(self._extractor.get_state("TPC TPG"))
+        state = SubsystemStatus(self._extractor.get_state(system.system_name))
         system_disabled = is_disabled or state == SubsystemStatus.DISABLED
 
         logging.info(f"Adding system {system.system_name} with state {state}")        

@@ -186,10 +186,8 @@ class AttributeExtractor(SubsystemExtractor):
             
             a_dal = ca.GetDalObjectAction(self._configuration)(a, self._system_class)
             
-            if s == state and SubsystemStatus(a_dal in self._disabled_dals) == state:
-                continue
-
-            return SubsystemStatus.PARTIALLY_ENABLED
+            if s != state:        
+                return SubsystemStatus.PARTIALLY_ENABLED
 
         return (
             SubsystemStatus.ENABLED
@@ -487,11 +485,11 @@ class DetectorExtractor(MultiItemExtractor):
 
     def get_state(self, state_name: str):
         for system in self._system_extractors:
-            if state_name in system.system_names:                
+            if state_name in system.system_names:
                 return system.get_state(state_name)
 
-        return SubsystemStatus.PARTIALLY_ENABLED
-
+        return SubsystemStatus.DISABLED
+        
     @property
     def systems(self):
         return self._system_extractors
