@@ -173,6 +173,7 @@ class EnableDisablePanel(Static):
                 return
 
             button_state = self.check_button_state(button, information)
+            logging.info(f"Button {button} is {button_state}")
 
             button_widget.remove_class("detector_subsystem_button_enabled")
             button_widget.remove_class("detector_subsystem_button_partial")
@@ -182,7 +183,6 @@ class EnableDisablePanel(Static):
             if button_state == SubsystemStatus.DISABLED:
                 button_widget.add_class("detector_subsystem_button_disabled")
                 button_widget.label = f"{button} (Disabled)"
-
             elif button_state == SubsystemStatus.ENABLED:
                 button_widget.add_class("detector_subsystem_button_enabled")
                 button_widget.label = f"{button} (Enabled)"

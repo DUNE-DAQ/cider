@@ -1,5 +1,5 @@
 import conffwk
-
+import confmodel
 
 class ConfigurationWrapper(conffwk.Configuration):
     """

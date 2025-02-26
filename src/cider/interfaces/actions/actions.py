@@ -186,7 +186,6 @@ class CheckIsDisabledAction(ActionInterface):
     """
     Check if DAL is disabled
     """
-
     def action(self, dal, session_name) -> bool:
         session_dal = GetDalObjectAction(self._configuration)(session_name, "Session")
 

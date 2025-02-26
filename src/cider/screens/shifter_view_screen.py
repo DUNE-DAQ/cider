@@ -225,10 +225,11 @@ class ShifterViewScreen(Screen):
 
     def on_enable_disable_panel_changed(self, message: EnableDisablePanel.Changed):
         # Change from enable->disable or vice versa
-        for a in self.query("EnableDisablePanel"):
-            a.update_button_styles()
-
         self.update_trees(message.configuration, message.session)
+
+        # for a in self.query("EnableDisablePanel"):
+        #     a.update_button_styles()
+
 
     def update_trees(self, configuration: ConfigurationWrapper, session: str):
         # We get the the full system first
@@ -241,10 +242,13 @@ class ShifterViewScreen(Screen):
 
         # Update component level trees
         for panel in self.query("MultiComponentEnableDisablePanel"):
-            self.update_tree(panel, disabled)
+            panel.update_disabled(disabled)
+            # Have to do this twice to get the correct state
+            panel.update_button_styles()
+            self.update_tree(panel)
 
-    def update_tree(self, panel: MultiComponentEnableDisablePanel, disabled: list = []):
+    def update_tree(self, panel: MultiComponentEnableDisablePanel):
         # Get current state of panel
         self.query_one(f"#tree_view_{panel.id.replace('_subsystem_panel', '')}").update(
-            panel.get_tree(disabled).print_tree()
+            panel.get_tree().print_tree()
         )

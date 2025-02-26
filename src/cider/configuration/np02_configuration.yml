@@ -56,12 +56,12 @@ PanelOptions:
       - TPC TPG:
           top_level_segment: "crp4-segment"
       
-          attributes:
-              - id: tp_generation_enabled
-                class: ReadoutApplication
+          # attributes:
+          #     - id: tp_generation_enabled
+          #       class: ReadoutApplication
 
-              - id: ta_generation_enabled
-                class: ReadoutApplication
+          #     - id: ta_generation_enabled
+          #       class: ReadoutApplication
 
           components:
             - id: tc-maker-tpc
@@ -69,13 +69,13 @@ PanelOptions:
             - id: tp-stream-writer
               class: TPStreamWriterApplication
 
-      - PDS TPG:
-          top_level_segment: "pds-segment"
+      # - PDS TPG:
+      #     top_level_segment: "pds-segment"
 
-          attributes:
-              - id: tp_generation_enabled
-                class: ReadoutApplication
+          # attributes:
+          #     - id: tp_generation_enabled
+          #       class: ReadoutApplication
     
-              - id: ta_generation_enabled
-                class: ReadoutApplication
+          #     - id: ta_generation_enabled
+          #       class: ReadoutApplication
 

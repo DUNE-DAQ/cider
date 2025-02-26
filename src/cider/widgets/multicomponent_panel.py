@@ -8,7 +8,7 @@ from cider.utils.daq_conf_tree import ComponentLevelTree
 
 from typing import Dict, Optional
 from textual.visual import SupportsVisual
-
+import logging
 
 class MultiComponentEnableDisablePanel(EnableDisablePanel):
     """
@@ -46,6 +46,8 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
 
         self._object_list = object_list
 
+        self._disabled_items = []
+
         self._extractor = DetectorExtractor(configuration, session_name, object_list)
 
     def generate_button_list(self) -> Dict | None:
@@ -66,21 +68,29 @@ class MultiComponentEnableDisablePanel(EnableDisablePanel):
 
         current_state = self._extractor.get_state(button_name)
 
-        if current_state == SubsystemStatus.PARTIALLY_ENABLED or current_state == SubsystemStatus.TOP_LEVEL_DISABLED:
+        # Specific handlers for these cases
+        if current_state == SubsystemStatus.PARTIALLY_ENABLED:
+            current_state = SubsystemStatus.ENABLED
+
+        if current_state == SubsystemStatus.TOP_LEVEL_DISABLED:
             current_state = SubsystemStatus.DISABLED
 
         desired_state = SubsystemStatus(not bool(current_state))
 
         self._extractor.set_state(desired_state, button_name)
 
+    def update_disabled(self, disabled_states):
+        self._disabled_items = disabled_states
+        self._extractor.set_disabled_dals(disabled_states)
+
     def check_button_state(self, button: str, _) -> SubsystemStatus:        
         return SubsystemStatus(self._extractor.get_state(button))
 
-    def get_tree(self, disabled_states=[]):
+    def get_tree(self):
+        
         tree = ComponentLevelTree(
             configuration=self._configuration,
             session=self._session_name,
-            system_info=self._object_list,
-            disabled_items=disabled_states,
+            extractor=self._extractor
         )
         return tree

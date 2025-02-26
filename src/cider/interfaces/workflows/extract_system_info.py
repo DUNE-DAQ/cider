@@ -63,10 +63,12 @@ class ItemExtractor(ABC):
         self,
         configuration: ConfigurationWrapper | None,
         session_name: Optional[str] = None,
+        disabled_dals = []
     ):
 
         self._configuration = configuration
         self._session_name = session_name
+        self._disabled_dals = disabled_dals
 
         if configuration is None or session_name is None:
             return
@@ -84,6 +86,12 @@ class ItemExtractor(ABC):
     @abstractmethod
     def set_state(self, state: SubsystemStatus):
         pass
+    
+    def get_disabled_dals(self):
+        return self._disabled_dals
+    
+    def set_disabled_dals(self, disabled_dals): 
+        self._disabled_dals = disabled_dals
 
 
 class SubsystemExtractor(ItemExtractor):
@@ -92,8 +100,9 @@ class SubsystemExtractor(ItemExtractor):
         configuration: ConfigurationWrapper | None,
         session_name: str,
         subsystem: dict,
+        disabled_dals = []
     ):
-        super().__init__(configuration, session_name)
+        super().__init__(configuration, session_name, disabled_dals)
 
         self._subsystem = subsystem
         self._session_dal = ca.GetDalObjectAction(self._configuration)(
@@ -142,9 +151,10 @@ class AttributeExtractor(SubsystemExtractor):
         session_name: str,
         subsystem: Dict,
         top_level_segment: str = "root-segment",
+        disabled_dals = []
     ):
 
-        super().__init__(configuration, session_name, subsystem)
+        super().__init__(configuration, session_name, subsystem, disabled_dals)
 
         self._top_level_segment = top_level_segment
         top_level_segment_dal = ca.GetDalObjectAction(self._configuration)(
@@ -172,8 +182,11 @@ class AttributeExtractor(SubsystemExtractor):
 
         state = current_states[0]
 
-        for s in current_states:
-            if s == state:
+        for s, a in zip(current_states, self._affected_objects):
+            
+            a_dal = ca.GetDalObjectAction(self._configuration)(a, self._system_class)
+            
+            if s == state and SubsystemStatus(a_dal in self._disabled_dals) == state:
                 continue
 
             return SubsystemStatus.PARTIALLY_ENABLED
@@ -192,7 +205,7 @@ class AttributeExtractor(SubsystemExtractor):
             )
             object_state = ca.GetAttributeAction(self._configuration)(
                 object_dal, self._system_id
-            )
+            ) and object_dal not in self._disabled_dals
 
             if object_state == self._enabled_state:
                 return SubsystemStatus.ENABLED
@@ -246,15 +259,13 @@ class AttributeExtractor(SubsystemExtractor):
 
 class ComponentExtractor(SubsystemExtractor):
     def get_state(self) -> SubsystemStatus:
-
-        subsystem_dal = ca.GetDalObjectAction(self._configuration)(
-            self._system_id, self._system_class
-        )
+        subsystem_dal = self.get_dal()
 
         return SubsystemStatus(
             not ca.CheckIsDisabledAction(self._configuration)(
                 subsystem_dal, self._session_name
             )
+            and subsystem_dal not in self._disabled_dals
         )
 
     def set_state(self, state: SubsystemStatus):
@@ -286,8 +297,9 @@ class MultiItemExtractor(ItemExtractor):
         configuration: ConfigurationWrapper | None,
         session_name: str | None = None,
         system: Dict | None = None,
+        disabled_dals = []
     ):
-        super().__init__(configuration, session_name)
+        super().__init__(configuration, session_name, disabled_dals)
 
         if self._configuration is not None and system is not None:
             self.read_system(system)
@@ -306,6 +318,7 @@ class SystemExtractor(MultiItemExtractor):
         session: Optional[str],
         system_name: Optional[str],
         system: Optional[Dict],
+        disabled_dals = []
     ):
         self._attributes = []
         self._components = []
@@ -313,7 +326,7 @@ class SystemExtractor(MultiItemExtractor):
 
         self._system_name = system_name
 
-        super().__init__(configuration, session, system)
+        super().__init__(configuration, session, system, disabled_dals)
 
     def read_system(self, system: Optional[Dict], system_name: Optional[str] = None):
         # Just to allow this to be run at start up
@@ -371,6 +384,7 @@ class SystemExtractor(MultiItemExtractor):
 
     def get_state(self, system_name: Optional[str] = None) -> SubsystemStatus | None:
 
+        # If the top level is disabled disable all lower level stuff
         if system_name is not self.system_name:
             if self.get_state(self.system_name) == SubsystemStatus.DISABLED:
                 return SubsystemStatus.TOP_LEVEL_DISABLED
@@ -380,7 +394,7 @@ class SystemExtractor(MultiItemExtractor):
             for s in self._attributes + self._components
             if self._check_subsystem_cond(s, system_name)
         ]
-
+        
         if len(states) == 0:
             logging.warning(f"No states found for {system_name}")
             return None
@@ -418,6 +432,10 @@ class SystemExtractor(MultiItemExtractor):
             s for s in self._attributes if self._check_subsystem_cond(s, system_name)
         ]
 
+    def set_disabled_dals(self, disabled_dals):
+        super().set_disabled_dals(disabled_dals)
+        for s in self._attributes + self._components:
+            s.set_disabled_dals(disabled_dals)
 
 class DetectorExtractor(MultiItemExtractor):
     def __init__(
@@ -425,14 +443,18 @@ class DetectorExtractor(MultiItemExtractor):
         configuration: ConfigurationWrapper,
         session: str | None,
         detector_config: Optional[Dict],
+        disabled_dals = []
     ):
+        self._detector_config = {}
         self._system_extractors = []
-        super().__init__(configuration, session, detector_config)
+        super().__init__(configuration, session, detector_config, disabled_dals)
+
 
     def read_system(self, detector_config: Dict):
         if not super().read_system(detector_config):
             return
 
+        self._detector_config = detector_config
         self._system_extractors = []
 
         extracted_systems = detector_config.get("Systems", [])
@@ -465,7 +487,7 @@ class DetectorExtractor(MultiItemExtractor):
 
     def get_state(self, state_name: str):
         for system in self._system_extractors:
-            if state_name in system.system_names:
+            if state_name in system.system_names:                
                 return system.get_state(state_name)
 
         return SubsystemStatus.PARTIALLY_ENABLED
@@ -474,9 +496,13 @@ class DetectorExtractor(MultiItemExtractor):
     def systems(self):
         return self._system_extractors
 
+    def set_disabled_dals(self, disabled_dals):
+        super().set_disabled_dals(disabled_dals)
+        for system in self._system_extractors:
+            system.set_disabled_dals(disabled_dals)
+
     def get_all_states(self):
         return_dict = {}
-
         # grab big dict
         for system in self._system_extractors:
             try:
@@ -488,3 +514,7 @@ class DetectorExtractor(MultiItemExtractor):
                 logging.error(f"Could not get all states for {system.system_name} due to {e}")
 
         return return_dict
+
+    @property
+    def system_info(self):
+        return self._detector_config
