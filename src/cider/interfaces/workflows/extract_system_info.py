@@ -219,9 +219,8 @@ class AttributeExtractor(SubsystemExtractor):
 
         state = current_states[0]
 
-        for s in current_states:
-
-            if s != state:
+        for s, a in zip(current_states, self._affected_objects):
+            if s != state or self.get_state_for_obj(a) != state:
                 return SubsystemStatus.PARTIALLY_ENABLED
 
         return (
