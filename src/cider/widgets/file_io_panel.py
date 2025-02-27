@@ -105,6 +105,7 @@ class FileIOPanel(Static):
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handles changes to the select widgets."""
+        self.loading=True
         if event.select.id == "select_base_branch":
             self._select_new_branch(event.value)
         elif event.select.id == "select_version":
@@ -114,7 +115,8 @@ class FileIOPanel(Static):
                 event.value if event.value != Select.BLANK else ""
             )
             self._update_button_state()
-
+        self.loading=False
+    
     def _update_button_state(self) -> None:
         """Updates the state of the open button based on selected config and session."""
         self.query_one("#open_file_button").disabled = not self._selected_session_name
