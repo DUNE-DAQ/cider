@@ -24,8 +24,8 @@ class FileIOPanel(Static):
     
     def __init__(
         self,
-        config_folder="./config_management",
         default_config: str="",
+        install_path: str="",
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -51,10 +51,10 @@ class FileIOPanel(Static):
         self._default_config = default_config
         
 
-        self._config_path = config_folder
+        self._install_path = install_path
         # Make it if it doesn't exist
-        Path(self._config_path).mkdir(parents=True, exist_ok=True)
-        self._manager = ManagementInterface(config_folder)
+        Path(self._install_path).mkdir(parents=True, exist_ok=True)
+        self._manager = ManagementInterface(self._install_path)
 
         self._branch_options = self._manager.get_base_branches()    
     
@@ -65,8 +65,7 @@ class FileIOPanel(Static):
 
         self._configuration = None
     
-        self._default_config = default_config
-    
+        self._default_config = default_config    
     
     def compose(self):
         with Grid(id="file_io_panel_grid"):
@@ -154,7 +153,6 @@ class FileIOPanel(Static):
     def _update_selection_list(self, options: List[Tuple[str, str]], list_id: str) -> None:
         try:
             self.query_one(f"#{list_id}").set_options(options)
-
             logging.info(options)
 
             if len(options):
@@ -187,7 +185,7 @@ class FileIOPanel(Static):
         
         self._manager.checkout_conf(version_name)
 
-        self.file_options = self._generate_selection_list(self._config_path)
+        self.file_options = self._generate_selection_list(self._install_path)
         
         for f in self.file_options:
             if self._default_config in f:

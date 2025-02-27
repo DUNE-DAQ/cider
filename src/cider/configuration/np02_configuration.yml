@@ -1,7 +1,5 @@
 General:
-  configuration: "sessions/np02-session.data.xml"
   download_directory: "run_configs"
-  use_path: False
   default_config: "np02-session.data.xml"
 
 PanelOptions:

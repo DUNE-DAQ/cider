@@ -35,7 +35,6 @@ class ShifterViewScreen(Screen):
 
     def __init__(
         self,
-        config_folder: str,
         output_directory: str,
         interface_config: str = "../configuration/np02_configuration.yml",
         name: str | None = None,
@@ -48,7 +47,6 @@ class ShifterViewScreen(Screen):
 
         self._config = ShifterConfigReader(interface_config)
 
-        self._config_folder = config_folder
         self._output_directory = output_directory
 
         self._configuration = None
@@ -63,7 +61,7 @@ class ShifterViewScreen(Screen):
 
             # File dropdowns
             yield FileIOPanel(
-                self._config_folder, self._config.default_config, id="file_io_panel"
+                self._config.default_config, self._config.install_path, id="file_io_panel"
             )
 
             # Grid containing buttons AND maps
