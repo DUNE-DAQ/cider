@@ -185,6 +185,10 @@ class FileIOPanel(Static):
         for f in self.file_options:
             if self._default_config in f:
                 self._open_new_file(f)
+                break
+        else:
+            self.post_message(self.FileNotFound(self._default_config))
+            
 
     def _reset_version_select(self) -> None:
         self._selected_version_name = None
@@ -197,7 +201,6 @@ class FileIOPanel(Static):
 
     def _deconfigure(self) -> None:
         """Resets the panel to its default state."""
-        self._selected_config_name = ""
         self._configuration = None
         self._selected_session_name = Select.BLANK
         self._update_selection_list([], "select_session")
@@ -273,3 +276,9 @@ class FileIOPanel(Static):
 
     class PathChanged(Message):
         """Message sent when the file list changes."""
+
+    class FileNotFound(Message):
+        """Message sent when the selected file is not found."""
+        def __init__(self, file_path: str):
+            super().__init__()
+            self.file_path = file_path

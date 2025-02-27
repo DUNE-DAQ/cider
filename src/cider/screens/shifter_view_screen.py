@@ -180,6 +180,12 @@ class ShifterViewScreen(Screen):
             # Lives at the bottom of the screen
             self.show_popup("[white]Configuration has been removed from disk!")
 
+    @on(FileIOPanel.FileNotFound)
+    async def file_not_found(self, event: FileIOPanel.FileNotFound):
+        self.show_popup(
+            f"[white]Configuration file not found: {event.file_path}\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]"
+        )
+        
     def open_new_file(self):
         """
         Open a new file is the only cross-app interface
