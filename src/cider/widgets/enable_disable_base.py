@@ -112,8 +112,17 @@ class EnableDisablePanel(Static):
             return
 
         self._button_action(objs_affected, button_name)
+        
+        old_label = event.button.label
+        
         self.update_button_styles()
         self.post_message(self.Changed(self._configuration, self._session_name))
+        
+        new_label = self.query_one(f"#{event.button.id}", Button).label
+        
+        if new_label == old_label:
+            self.post_message(self.TooManyPresses(button_name))
+        
         logging.debug(
             f"Button {button_name} {'disabled' if self.check_button_state(button_name, self._button_list[button_name]) else 'enabled'}"
         )
@@ -123,22 +132,6 @@ class EnableDisablePanel(Static):
 
     def generate_button_list(self):
         raise NotImplementedError("Generate button list must be implemented")
-
-    class Changed(Message):
-        """Custom message to notify when a button is pressed."""
-
-        def __init__(self, configuration, session) -> None:
-            super().__init__()
-            self._configuration = configuration
-            self._session = session
-
-        @property
-        def configuration(self):
-            return self._configuration
-
-        @property
-        def session(self):
-            return self._session
 
     def get_changed_states_as_str(self):
         output_str = ""
@@ -172,6 +165,8 @@ class EnableDisablePanel(Static):
                 button_widget = self.query_one(f"#{button_id}", Button)
             except Exception:
                 continue
+            
+            current_label = button_widget.label
 
             button_state = self.check_button_state(button, information)
 
@@ -201,3 +196,29 @@ class EnableDisablePanel(Static):
 
             else:
                 raise ValueError(f"Unknown button state {button_state}")
+
+                
+
+    class Changed(Message):
+        """Custom message to notify when a button is pressed."""
+
+        def __init__(self, configuration, session) -> None:
+            super().__init__()
+            self._configuration = configuration
+            self._session = session
+
+        @property
+        def configuration(self):
+            return self._configuration
+
+        @property
+        def session(self):
+            return self._session
+
+    class TooManyPresses(Message):
+        def __init__(self, button_label):
+            super().__init__()
+            self._button_label = button_label
+            
+        def message(self):
+            return f"Button {self._button_label} cannot change state, this may be because another system is still disabled."

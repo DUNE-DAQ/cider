@@ -139,7 +139,7 @@ class ShifterViewScreen(Screen):
                 logging.error(f"{traceback.format_exc()}")
                 await self.deconfigure()
 
-    def show_popup(self, message: str):
+    def show_popup(self, message: str, timer: float = 10.0):
         """
         Display a pop-up message on the screen.
         """
@@ -147,7 +147,7 @@ class ShifterViewScreen(Screen):
         self.remove_popup()
 
         # Create and mount the pop-up
-        popup = PopupMessage(message, classes="popup popup_failure")
+        popup = PopupMessage(message, timer, classes="popup popup_failure")
         self.query_one("#main_container").mount(popup)
 
     def remove_popup(self):
@@ -183,9 +183,16 @@ class ShifterViewScreen(Screen):
     @on(FileIOPanel.FileNotFound)
     async def file_not_found(self, event: FileIOPanel.FileNotFound):
         self.show_popup(
-            f"[white]Configuration file not found: {event.file_path}\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]"
+            f"[white]Configuration file not found: {event.file_path}\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]",
+            timer=10.0,
         )
         
+    @on(EnableDisablePanel.TooManyPresses)
+    async def too_many_presses(self, event: EnableDisablePanel.TooManyPresses):
+        self.show_popup(
+            f"[white]{event.message()}",
+            timer=3.0
+        )
     def open_new_file(self):
         """
         Open a new file is the only cross-app interface
