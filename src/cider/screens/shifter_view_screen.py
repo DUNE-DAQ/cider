@@ -251,12 +251,10 @@ class ShifterViewScreen(Screen):
 
         # Update component level trees
         for panel in self.query("EnableDisablePanel"):
-            try:
+            if isinstance(panel, MultiComponentEnableDisablePanel):
                 panel.update_disabled(disabled)
                 self.update_tree(panel)
             # Have to do this twice to get the correct state
-            except Exception:
-                pass
             panel.update_button_styles()
     
 
