@@ -1,7 +1,6 @@
 ---
 General:
   # Environment variables
-  # add to cli
   default_config: "SESSION_FILE"
   download_directory: "CONFIG_DIR"
   session_name: "SESSION_NAME"

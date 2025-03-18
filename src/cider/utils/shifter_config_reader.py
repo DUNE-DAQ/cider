@@ -3,9 +3,11 @@ from cider.widgets.multicomponent_panel import MultiComponentEnableDisablePanel
 
 from textual.widgets import TabPane, Static
 from textual.containers import ScrollableContainer
+from cider.utils.path_or_env_check import path_or_env_check
 
 import logging
 import yaml
+import os
 
 """
 - Name:
@@ -17,7 +19,7 @@ import yaml
 
 # Class for reading a YAML config and producing panels
 class ShifterConfigReader:
-    def __init__(self, config_file):
+    def __init__(self, config_file, **kwargs):
 
         with open(config_file, "r") as f:
             self._config = yaml.safe_load(f)
@@ -25,18 +27,62 @@ class ShifterConfigReader:
         # We can get settings
         general_settings = self._config.get("General", {})
 
+        # Update with any user args
+        general_settings.update(kwargs)
+
+        # Generic settings
+        self._default_config = path_or_env_check(general_settings.get("default_config", ""))
+        self._download_directory = path_or_env_check(general_settings.get("download_directory", ""))
+        self._session_name = path_or_env_check(general_settings.get("session_name", ""))
+        self._base_url = path_or_env_check(general_settings.get("base_url", ""))
+        self._operation_url = path_or_env_check(general_settings.get("operation_url", ""))
+
         # Default config file
-        self._default_config = general_settings.get("default_config", None)
-        self._install_path = general_settings.get("download_directory", "run_configs")
         self._panel_list, self._map_list, self._panel_labels = self.read_panel_options()
+
+    @property
+    def output_directory(self):
+        return f"{self._download_directory}/../shifter_configs/{self._session_name}"
 
     @property
     def default_config(self):
         return self._default_config
-
+    
+    @default_config.setter
+    def default_config(self, value):
+        self._default_config = path_or_env_check(value)
+    
     @property
-    def install_path(self):
-        return self._install_path
+    def download_directory(self):
+        return self._download_directory
+    
+    @download_directory.setter
+    def download_directory(self, value):
+        self._download_directory = path_or_env_check(value)
+    
+    @property
+    def session_name(self):
+        return self._session_name
+    
+    @session_name.setter
+    def session_name(self, value):
+        self._session_name = path_or_env_check(value)
+    
+    @property
+    def base_url(self):
+        return self._base_url
+    
+    @base_url.setter
+    def base_url(self, value):
+        self._base_url = path_or_env_check(value)
+    
+    @property
+    def operation_url(self):
+        return self._operation_url
+    
+    @operation_url.setter
+    def operation_url(self, value):
+        self._operation_url = path_or_env_check(value)
 
     @property
     def panel_list(self):

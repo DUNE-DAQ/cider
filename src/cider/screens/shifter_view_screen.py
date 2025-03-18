@@ -37,8 +37,7 @@ class ShifterViewScreen(Screen):
 
     def __init__(
         self,
-        output_directory: str,
-        interface_config: str = "../configuration/np02_configuration.yml",
+        interface_config: ShifterConfigReader,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
@@ -47,9 +46,7 @@ class ShifterViewScreen(Screen):
 
         logging.info("Opening shifter view screen")
 
-        self._config = ShifterConfigReader(interface_config)
-
-        self._output_directory = output_directory
+        self._config = interface_config
 
         self._configuration = None
         self._session = None
@@ -63,8 +60,7 @@ class ShifterViewScreen(Screen):
 
             # File dropdowns
             yield FileIOPanel(
-                self._config.default_config,
-                self._config.install_path,
+                self._config,
                 id="file_io_panel",
             )
 
@@ -102,7 +98,7 @@ class ShifterViewScreen(Screen):
             yield OptionPanel(
                 None,
                 None,
-                self._output_directory,
+                self._config.output_directory,
                 id="option_panel_main",
                 classes="options_panel",
             )

@@ -1,5 +1,6 @@
 import cider.interfaces.actions.actions as ca
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
+from cider.utils.shifter_config_reader import ShifterConfigReader
 from textual.containers import Grid
 from textual.visual import SupportsVisual
 from textual.widgets import Button, Static, Select
@@ -25,8 +26,7 @@ class FileIOPanel(Static):
 
     def __init__(
         self,
-        default_config: str = "",
-        install_path: str = "",
+        interface_config: ShifterConfigReader,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -49,26 +49,21 @@ class FileIOPanel(Static):
             disabled=disabled,
         )
 
-        self._default_config = os.environ.get(default_config, None)
+        self._default_config = interface_config.default_config
         
-        if self._default_config is None:
-            self.post_message(self.FileIOPanelError(f"Default config {default_config} not found"))
 
-        self._install_path = install_path
+        self._install_path = interface_config.download_directory
         # Make it if it doesn't exist
         Path(self._install_path).mkdir(parents=True, exist_ok=True)
-        self._manager = ManagementInterface(self._install_path)
+        self._manager = ManagementInterface(interface_config)
 
-        self._branch_options = self._manager.get_configuration_versiones()
+        self._branch_options = self._manager.get_config_version()
 
         self._selected_branch = None
         self._selected_version_name = None
-        self._selected_config_name = default_config
         self._selected_session_name = None
 
         self._configuration = None
-
-        self._default_config = default_config
 
     def compose(self):
         with Grid(id="file_io_panel_grid"):
@@ -128,9 +123,9 @@ class FileIOPanel(Static):
 
     def _open_new_file(self, file_path) -> None:
         """Handles opening a new file and updating the session list."""
-        self._selected_config_name = file_path
+        self._default_config = file_path
 
-        self._configuration = ConfigurationWrapper(self._selected_config_name)
+        self._configuration = ConfigurationWrapper(self._default_config)
 
         # Grab all the sessions available
         session_list = [
@@ -198,7 +193,7 @@ class FileIOPanel(Static):
         self._reset_file_select()
 
     def _reset_file_select(self) -> None:
-        self._selected_config_name = None
+        self._default_config = None
         self._selected_session_name = None
         self._update_selection_list([], "select_session")
 
@@ -213,9 +208,9 @@ class FileIOPanel(Static):
         self.post_message(self.Deconfigured())
 
     @property
-    def selected_config_name(self) -> str | None:
+    def selected_config_name(self) -> str | Path | None:
         """Returns the selected configuration name."""
-        return self._selected_config_name
+        return self._default_config
 
     @property
     def selected_session_name(self) -> str | None:
