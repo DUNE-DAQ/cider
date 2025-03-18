@@ -23,13 +23,11 @@ from cider.widgets.popup_message import PopupMessage
 
 
 class ShifterViewScreen(Screen):
-
     # If we're in a tmux session we can get the id
-    tmux_id = os.environ.get("TMUX",["0"])[-1]
-            
+    buffer_id = os.environ.get("SESSION_NAME", os.getlogin())
 
     # Buffer config used to store the configuration during editing    
-    TMP_CONFIG = Path(f"/tmp/shifter_configs-{os.getlogin()}-{tmux_id}/tmp_config.data.xml")
+    TMP_CONFIG = Path(f"/tmp/shifter_configs-{buffer_id}/tmp_config.data.xml")
 
     changed_session = False
 
@@ -39,8 +37,7 @@ class ShifterViewScreen(Screen):
 
     def __init__(
         self,
-        output_directory: str,
-        interface_config: str = "../configuration/np02_configuration.yml",
+        interface_config: ShifterConfigReader,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
@@ -49,9 +46,7 @@ class ShifterViewScreen(Screen):
 
         logging.info("Opening shifter view screen")
 
-        self._config = ShifterConfigReader(interface_config)
-
-        self._output_directory = output_directory
+        self._config = interface_config
 
         self._configuration = None
         self._session = None
@@ -65,8 +60,7 @@ class ShifterViewScreen(Screen):
 
             # File dropdowns
             yield FileIOPanel(
-                self._config.default_config,
-                self._config.install_path,
+                self._config,
                 id="file_io_panel",
             )
 
@@ -104,7 +98,7 @@ class ShifterViewScreen(Screen):
             yield OptionPanel(
                 None,
                 None,
-                self._output_directory,
+                self._config.output_directory,
                 id="option_panel_main",
                 classes="options_panel",
             )
@@ -187,13 +181,13 @@ class ShifterViewScreen(Screen):
     @on(FileIOPanel.FileNotFound)
     async def file_not_found(self, event: FileIOPanel.FileNotFound):
         self.show_popup(
-            f"[white]Configuration file not found: {event.file_path}\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]",
+            f"[white]Configuration invalid or could not be ooened: {event.file_path}",
             timer=10.0,
         )
         
     
-    @on(FileIOPanel.TooManySessions)    
-    async def too_many_sessions(self, event: FileIOPanel.TooManySessions):
+    @on(FileIOPanel.FileIOPanelError)    
+    async def too_many_sessions(self, event: FileIOPanel.FileIOPanelError):
         self.show_popup(
             f"[white]{event.message}",
             timer=5.0

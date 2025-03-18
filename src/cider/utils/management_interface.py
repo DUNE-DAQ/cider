@@ -3,22 +3,20 @@ Simple wrapper for talking to config-management
 """
 
 from config_management.ConfPool import ConfPool
+from cider.utils.shifter_config_reader import ShifterConfigReader
 import re
 
 
 class ManagementInterface:
-    def __init__(
-        self,
-        path,
-        base="ssh://git@gitlab.cern.ch:7999/dune-daq/online/ehn1-daqconfigs.git",
-        operation="ssh://git@gitlab.cern.ch:7999/dune-daq/online/np02-configs-operation.git",
-    ) -> None:
+    def __init__(self, interface_config: ShifterConfigReader) -> None:
 
-        self._pool = ConfPool(path, operation_url=operation, base_url=base)
+        self._pool = ConfPool(interface_config.download_directory,
+                              operation_url=interface_config.operation_url,
+                              base_url=interface_config.base_url)
         self._release = None
         self._release_str = None
 
-    def get_base_branches(self):
+    def get_config_version(self):
         return self._pool.get_daq_versions()
 
     @property

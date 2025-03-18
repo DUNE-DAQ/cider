@@ -1,5 +1,6 @@
 import cider.interfaces.actions.actions as ca
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
+from cider.utils.shifter_config_reader import ShifterConfigReader
 from textual.containers import Grid
 from textual.visual import SupportsVisual
 from textual.widgets import Button, Static, Select
@@ -19,13 +20,12 @@ class FileIOPanel(Static):
     """
 
     branch_options = reactive([])
-    version_options = reactive([])
+    configuration_options = reactive([])
     file_options = reactive([])
 
     def __init__(
         self,
-        default_config: str = "",
-        install_path: str = "",
+        interface_config: ShifterConfigReader,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -48,42 +48,38 @@ class FileIOPanel(Static):
             disabled=disabled,
         )
 
-        self._default_config = default_config
+        self._default_config = interface_config.default_config
+        
 
-        self._install_path = install_path
+        self._install_path = interface_config.download_directory
         # Make it if it doesn't exist
         Path(self._install_path).mkdir(parents=True, exist_ok=True)
-        self._manager = ManagementInterface(self._install_path)
+        self._manager = ManagementInterface(interface_config)
 
-        self._branch_options = self._manager.get_base_branches()
+        self._branch_options = self._manager.get_config_version()
 
         self._selected_branch = None
         self._selected_version_name = None
-        self._selected_config_name = default_config
         self._selected_session_name = None
 
         self._configuration = None
-
-        self._default_config = default_config
 
     def compose(self):
         with Grid(id="file_io_panel_grid"):
             # Base branch menu
             yield Select(
                 [(b, b) for b in self._branch_options],
-                prompt="Select a Base Branch",
-                id="select_base_branch",
+                prompt="Select Version",
+                id="select_version",
                 classes="file_select",
             )
             yield Select(
-                [(b, b) for b in self.version_options],
-                prompt="Select a Version",
-                id="select_version",
+                [(b, b) for b in self.configuration_options],
+                prompt="Select a Configuration",
+                id="select_configuration",
                 classes="file_select",
                 disabled=True,
             )
-
-
 
             yield Button(
                 "Open",
@@ -100,9 +96,9 @@ class FileIOPanel(Static):
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handles changes to the select widgets."""
         self.loading=True
-        if event.select.id == "select_base_branch":
+        if event.select.id == "select_version":
             self._select_new_branch(event.value)
-        elif event.select.id == "select_version":
+        elif event.select.id == "select_configuration":
             self._select_new_version(event.value)
             self._update_button_state()
         # elif event.select.id == "select_session":
@@ -126,9 +122,9 @@ class FileIOPanel(Static):
 
     def _open_new_file(self, file_path) -> None:
         """Handles opening a new file and updating the session list."""
-        self._selected_config_name = file_path
+        self._default_config = file_path
 
-        self._configuration = ConfigurationWrapper(self._selected_config_name)
+        self._configuration = ConfigurationWrapper(self._default_config)
 
         # Grab all the sessions available
         session_list = [
@@ -139,7 +135,7 @@ class FileIOPanel(Static):
         if len(session_list) != 1:
             warn=f"Found {len(session_list)} sessions in {file_path}, picking {session_list[0]}"
             logging.warning(warn)
-            self.post_message(self.TooManySessions(warn))
+            self.post_message(self.FileIOPanelError(warn))
         
         self._selected_session_name = session_list[0]
         
@@ -163,13 +159,13 @@ class FileIOPanel(Static):
     def _select_new_branch(self, branch_name):
         if branch_name == Select.BLANK:
             self._selected_branch = None
-            self._update_selection_list([], "select_version")
+            self._update_selection_list([], "select_configuration")
             return self._reset_version_select()
 
         self._manager.release = branch_name
         self._selected_branch = branch_name
-        self.version_options = [(m, m) for m in self._manager.get_confs()]
-        self._update_selection_list(self.version_options, "select_version")
+        self.configuration_options = [(m, m) for m in self._manager.get_confs()]
+        self._update_selection_list(self.configuration_options, "select_configuration")
 
     def _select_new_version(self, version_name):
         if version_name == Select.BLANK:
@@ -196,7 +192,7 @@ class FileIOPanel(Static):
         self._reset_file_select()
 
     def _reset_file_select(self) -> None:
-        self._selected_config_name = None
+        self._default_config = None
         self._selected_session_name = None
         self._update_selection_list([], "select_session")
 
@@ -211,9 +207,9 @@ class FileIOPanel(Static):
         self.post_message(self.Deconfigured())
 
     @property
-    def selected_config_name(self) -> str | None:
+    def selected_config_name(self) -> str | Path | None:
         """Returns the selected configuration name."""
-        return self._selected_config_name
+        return self._default_config
 
     @property
     def selected_session_name(self) -> str | None:
@@ -284,7 +280,7 @@ class FileIOPanel(Static):
             super().__init__()
             self.file_path = file_path
 
-    class TooManySessions(Message):
+    class FileIOPanelError(Message):
         """Message sent when the selected file has too many sessions."""
         def __init__(self, message: str):
             super().__init__()
