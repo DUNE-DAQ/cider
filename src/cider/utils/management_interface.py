@@ -10,15 +10,16 @@ class ManagementInterface:
     def __init__(
         self,
         path,
-        base="ssh://git@gitlab.cern.ch:7999/dune-daq/online/ehn1-daqconfigs.git",
-        operation="ssh://git@gitlab.cern.ch:7999/dune-daq/online/np02-configs-operation.git",
+        base="https://gitlab.cern.ch/dune-daq/online/ehn1-daqconfigs.git",
+        operation="https://gitlab.cern.ch/dune-daq/online/np02-configs-operation.git",
+        # apparatus
     ) -> None:
 
         self._pool = ConfPool(path, operation_url=operation, base_url=base)
         self._release = None
         self._release_str = None
 
-    def get_base_branches(self):
+    def get_daq_version(self):
         return self._pool.get_daq_versions()
 
     @property

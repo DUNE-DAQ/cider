@@ -200,7 +200,6 @@ class EnableDisablePanel(Static):
         @property
         def session(self):
             return self._session
-
             
         def message(self):
             return f"Button {self._button_label} cannot change state, this may be because another system is still disabled."

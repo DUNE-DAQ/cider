@@ -1,6 +1,13 @@
+---
 General:
-  default_config: "np02-session.data.xml"
-  download_directory: "run_configs"
+  # Environment variables
+  # add to cli
+  default_config: "SESSION_FILE"
+  download_directory: "CONFIG_DIR"
+  session_name: "SESSION_NAME"
+  
+  base_url: "blah"
+  operation_url: "blah"
 
 PanelOptions:
 
@@ -29,8 +36,6 @@ PanelOptions:
             - id: pds-segment
               class: Segment
 
-
-
   # Dataflow
   Dataflow:
     label: "dataflow"
@@ -43,7 +48,6 @@ PanelOptions:
     label: "trigger"
     view_panel: "Trigger View"
     panel_type: "multisystem"
-
 
     Systems:
       - TPC TPG:
