@@ -8,7 +8,6 @@ from textual.message import Message
 from textual.reactive import reactive
 from typing import List, Optional, Tuple
 import os
-import sys
 from pathlib import Path
 import logging
 
