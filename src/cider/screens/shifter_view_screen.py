@@ -128,7 +128,7 @@ class ShifterViewScreen(Screen):
                 await self.deconfigure()
             except Exception as e:
                 self.show_popup(
-                    f"[white]ERROR::{e}. This is likely an issue with the interface. Please check with the experts!\nLog saved to[/white] [bold grey3]{logging.getLogger().handlers[0].baseFilename}[/bold grey3]"
+                    f"[white]ERROR::{e}. This is likely an issue with the interface. Please check with the experts!"
                 )
                 # Optionally log the error for debugging
                 logging.error(

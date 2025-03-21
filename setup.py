@@ -7,7 +7,7 @@ setup(
         "textual",
         "textual_dev",
         "rich",
-        "config-management @ git+https://gitlab.cern.ch/dune-daq/online/config-management.git", # Config management
+        "config_management @ git+https://gitlab.cern.ch/dune-daq/online/config-management.git", # Config management
     ],
     extras_require={"develop": ["ipdb", "ipython"]},
     package_data={"": ["*.tcss", "*.yml"]},

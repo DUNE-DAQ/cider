@@ -38,6 +38,7 @@ class QuitScreen(Screen):
         if run_mode is None:
             run_mode="ssh-standalone"
         else:
+
             run_mode = f"{run_mode}".strip(".json") 
         run_cmd = f"drunc-unified-shell {run_mode} {self._saved_configuration_name} {self._session_name}"
 
@@ -56,10 +57,9 @@ class QuitScreen(Screen):
 
         output = ""
         if quit_without_saving:
-            output += "[bold red]WARNING!! Configuration was created earlier but you've quit without saving so this may not be up to date with all the changes you've made, be careful![/bold red]\n\n"
+            output += "[bold red]WARNING!! Configuration was created earlier but you've quit without saving so this may not be up to date with all the changes you've made, be careful![/bold red]\n"
 
         output += f"[purple]To run[/purple] use [bold green]{run_alias}\n"
-        # output += f"[purple]This will run:[/purple] [green]{run_cmd}"
         return output
 
     def compose(self):
