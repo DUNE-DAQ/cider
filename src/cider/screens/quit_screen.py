@@ -35,12 +35,15 @@ class QuitScreen(Screen):
 
         # Set environment variables!
         run_mode = os.getenv('PROCESS_MANAGER_CONFIG')
+        
+        logging.info(f"Run mode before strip: {run_mode}")
+        
         if run_mode is None:
             run_mode="ssh-standalone"
         else:
+            run_mode = Path(run_mode).stem 
 
-            run_mode = f"{run_mode}".strip(".json") 
-        run_cmd = f"drunc-unified-shell {run_mode} {self._saved_configuration_name} {self._session_name}"
+        run_cmd = f"drunc-unified-shell {run_mode} {self._saved_configuration_name} {self._session_name}" 
 
         # hacky
         buffer_id = os.environ.get("SESSION_NAME", os.getlogin())
@@ -52,6 +55,12 @@ class QuitScreen(Screen):
             f.write(f"export EHN1_RUN_COMMAND='{run_cmd}'\n")
 
         os.chmod(f"{output_script}", 0o755)
+
+        logging.info(f"Session: {self._session_name}")
+        logging.info(f"run_mode: {run_mode}")
+        logging.info(f"Saved configuration: {self._saved_configuration_name}")
+        logging.info(f"Output script: {output_script}")
+        logging.info(f"Run command: {run_cmd}")
 
         run_alias = os.environ.get("EHN1_RC_LAUNCH", run_cmd)
 

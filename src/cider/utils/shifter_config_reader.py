@@ -5,7 +5,6 @@ from textual.widgets import TabPane, Static
 from textual.containers import ScrollableContainer
 from cider.utils.path_or_env_check import path_or_env_check
 
-import logging
 import yaml
 import os
 
@@ -158,9 +157,6 @@ class ShifterConfigReader:
         )
 
     def initialise_multi_system(self, panel_name, opts):
-
-        logging.debug(f"{panel_name} :: {opts}")
-
         panel = MultiComponentEnableDisablePanel(
             None,
             None,

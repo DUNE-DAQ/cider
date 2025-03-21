@@ -52,10 +52,7 @@ class ShifterView(App):
         """
         super().__init__(*args)
         
-        # Make the logging directory if it doesn't exist
-
         self._exit_message = ""
-
         # Read kwargs
         self._apparatus = kwargs.get("apparatus", os.environ.get("APPARATUS", "np02"))
         
@@ -68,11 +65,10 @@ class ShifterView(App):
         else:
             raise FileNotFoundError(f"Configuration file {configuration} not found")
 
-        self.__init_logger(kwargs.get("log_level", "INFO"))        
+        self._init_logger(kwargs.get("log_level", "INFO"))
 
-    def __init_logger(self, log_level):
+    def _init_logger(self, log_level):
         # Grab from config reader
-        
         
         logging_path = Path(f"{self._interface_config.output_directory}/logs")
         logging_path.mkdir(parents=True, exist_ok=True)
@@ -83,7 +79,7 @@ class ShifterView(App):
             datefmt="%Y-%m-%d:%H:%M:%S",
             level=log_level
         )
-
+        
         clean_old_files(logging_path, "log")
         
 
