@@ -35,11 +35,13 @@ class QuitScreen(Screen):
 
         # Set environment variables!
         run_mode = os.getenv('PROCESS_MANAGER_CONFIG')
+                
         if run_mode is None:
             run_mode="ssh-standalone"
         else:
-            run_mode = f"{run_mode}".strip(".json") 
-        run_cmd = f"drunc-unified-shell {run_mode} {self._saved_configuration_name} {self._session_name}"
+            run_mode = Path(run_mode).stem 
+
+        run_cmd = f"drunc-unified-shell {run_mode} {self._saved_configuration_name} {self._session_name}" 
 
         # hacky
         buffer_id = os.environ.get("SESSION_NAME", os.getlogin())
@@ -56,10 +58,9 @@ class QuitScreen(Screen):
 
         output = ""
         if quit_without_saving:
-            output += "[bold red]WARNING!! Configuration was created earlier but you've quit without saving so this may not be up to date with all the changes you've made, be careful![/bold red]\n\n"
+            output += "[bold red]WARNING!! Configuration was created earlier but you've quit without saving so this may not be up to date with all the changes you've made, be careful![/bold red]\n"
 
         output += f"[purple]To run[/purple] use [bold green]{run_alias}\n"
-        # output += f"[purple]This will run:[/purple] [green]{run_cmd}"
         return output
 
     def compose(self):
