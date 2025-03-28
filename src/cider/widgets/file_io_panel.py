@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import logging
 
-from cider.utils.management_interface import ManagementInterface
+from cider.utils.management_interface import RemoteManagementInterface, LocalManagementInterfcae
 
 
 class FileIOPanel(Static):
@@ -27,6 +27,7 @@ class FileIOPanel(Static):
         self,
         apparatus: str,
         interface_config: ShifterConfigReader,
+        use_local: bool = False,
         content: str | SupportsVisual = "",
         *,
         expand: bool = False,
@@ -56,11 +57,19 @@ class FileIOPanel(Static):
         # Make it if it doesn't exist
         Path(self._install_path).mkdir(parents=True, exist_ok=True)
                 
-        self._manager = ManagementInterface(apparatus=apparatus, interface_config=interface_config)
-        
-        self._branch_options = self._manager.get_config_version()
+        self._use_local = use_local    
+            
+        if use_local:
+            self._manager = LocalManagementInterfcae(interface_config=interface_config)
+            # Only one option here because we're using a local repo!
+            self._branch_options = [self._install_path]
+            self._selected_branch = self._install_path
+        else:
+            self._manager = RemoteManagementInterface(interface_config, apparatus)    
+            self._branch_options = self._manager.get_config_version()
+            self._selected_branch = None
 
-        self._selected_branch = None
+        self.configuration_options = [(m, m) for m in self._manager.get_confs()]
         self._selected_version_name = None
         self._selected_session_name = None
 
@@ -74,13 +83,17 @@ class FileIOPanel(Static):
                 prompt="Select Version",
                 id="select_version",
                 classes="file_select",
+                # Disable if there's only one option
+                disabled=(len(self._branch_options)==1),
+                default = self._selected_branch if self._selected_branch is not None else Select.BLANK
             )
+
             yield Select(
                 [(b, b) for b in self.configuration_options],
                 prompt="Select a Configuration",
                 id="select_configuration",
                 classes="file_select",
-                disabled=True,
+                disabled=self._selected_branch is not None,
             )
 
             yield Button(
@@ -100,13 +113,11 @@ class FileIOPanel(Static):
         self.loading=True
         if event.select.id == "select_version":
             self._select_new_branch(event.value)
+
         elif event.select.id == "select_configuration":
             self._select_new_version(event.value)
             self._update_button_state()
-        # elif event.select.id == "select_session":
-        #     self._selected_session_name = (
-        #         event.value if event.value != Select.BLANK else ""
-        #     )
+
         self.loading=False
     
     def _update_button_state(self) -> None:
@@ -141,9 +152,6 @@ class FileIOPanel(Static):
         
         self._selected_session_name = session_list[0]
         
-
-        # self._update_selection_list(session_list, "select_session")
-
     def _update_selection_list(
         self, options: List[Tuple[str, str]], list_id: str
     ) -> None:
@@ -287,3 +295,5 @@ class FileIOPanel(Static):
         def __init__(self, message: str):
             super().__init__()
             self.message = message
+
+

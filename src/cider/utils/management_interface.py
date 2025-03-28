@@ -4,11 +4,30 @@ Simple wrapper for talking to config-management
 
 from config_management.ConfPool import ConfPool
 from cider.utils.shifter_config_reader import ShifterConfigReader
+from cider.utils.config_path_reader import ConfigPathReader
+
 import re
+from abc import ABC, abstractmethod
 
+class ManagementInterface(ABC):
+    def __init__(self, interface_config):
+        self._interface_config = interface_config
 
-class ManagementInterface:
-    def __init__(self, apparatus: str, interface_config: ShifterConfigReader) -> None:
+    @property
+    def interface_config(self):
+        return self._interface_config
+
+    @abstractmethod
+    def get_confs(self):
+        pass
+    
+
+class RemoteManagementInterface(ManagementInterface):
+    '''
+    Interface to the remote configuration management system
+    '''
+    def __init__(self, interface_config: ShifterConfigReader, apparatus: str) -> None:
+        super().__init__(interface_config)
 
         self._pool = ConfPool(interface_config.download_directory,
                               apparatus=apparatus,
@@ -43,3 +62,14 @@ class ManagementInterface:
         if self._release is None:
             return None
         self._pool.checkout_conf(config, str(self._release_str))
+
+class LocalManagementInterfcae(ManagementInterface):
+    '''
+    Interface to the local configuration management system
+    '''
+    def __init__(self, interface_config: ShifterConfigReader) -> None:
+        super().__init__(interface_config)
+
+    def get_confs(self):
+        return ConfigPathReader()(self.interface_config.config_directories)
+    
