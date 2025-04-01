@@ -155,6 +155,8 @@ class SelectDAQConfiguration(DAQSelectMenu):
             options = [(str(m.name), m) for m in management_interface.get_configurations()]
             value = options[0][1]
 
+        else:
+            options = []
             
         super().__init__(
             options,
