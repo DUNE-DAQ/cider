@@ -2,7 +2,7 @@ import cider.interfaces.actions.actions as ca
 from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 import os
 
 
@@ -63,7 +63,7 @@ class ConfigPathReader:
                 else [Path(p) for p in self.config_directories.split(":")]
             )
         else:
-            self.config_directories = [Path(p) for p in self.config_directories]
+            self.config_directories = [self.config_directories]
 
         database_list = []
         for directory in self.config_directories:

@@ -132,7 +132,7 @@ c
 @click.option("-b", "--base-url", "base_url", required=False)
 @click.option("-p", "--operation-url", "operation_url", required=False)
 @click.option("-d", "--debug", "log_level", default="INFO", required=False)
-@click.option("-l", "--local-config", "use_local", required=False)
+@click.option("-l", "--local-config", "use_local", required=False, is_flag=True)
 def main(
     apparatus,
     default_config,

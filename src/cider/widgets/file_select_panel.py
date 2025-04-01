@@ -37,6 +37,13 @@ class DAQSelectMenu(Select):
         self._default_value = value
 
         # Check if the value is in the options
+        # Disable the select if there's only one option
+        if len(options) == 1:
+            value = options[0][1]
+            disabled = True
+            allow_blank = False
+            prompt = None
+
         value = self.check_options(options, value)
 
         super().__init__(
@@ -53,10 +60,6 @@ class DAQSelectMenu(Select):
 
         self._management_interface = management_interface
 
-        # Disable the select if there's only one option
-        if len(self._options) == 1:
-            self.value = self._options[0][1]
-            self.disabled = True
 
     @classmethod
     def check_options(cls, options: Iterable[tuple[ConsoleRenderable | RichCast | str, Any]], default: Any | NoSelection):
@@ -91,6 +94,10 @@ class SelectDAQVersion(DAQSelectMenu):
         
         # We need to correctly format options
         options = [(str(Path(o).name), o) for o in options_list]
+        
+        if len(options) == 1:
+            management_interface.set_version(options_list[0])
+
         
         super().__init__(
             options,
@@ -135,10 +142,20 @@ class SelectDAQConfiguration(DAQSelectMenu):
         disabled: bool = False,
         tooltip: ConsoleRenderable | RichCast | str | None = None
     ):
+      
+        # Real hack        
+        # Correctly format options     
         
-        # Correctly format options
-        options = [(m, m) for m in management_interface.get_configurations()]
-        
+
+        if len(management_interface.get_daq_versions()) == 1:
+            management_interface.set_version(management_interface.get_daq_versions ()[0])
+            disabled = True
+            allow_blank = False
+            prompt = None
+            options = [(str(m.name), m) for m in management_interface.get_configurations()]
+            value = options[0][1]
+
+            
         super().__init__(
             options,
             management_interface=management_interface,
@@ -158,18 +175,19 @@ class SelectDAQConfiguration(DAQSelectMenu):
 
         if not options:
             self.disabled = True
-            self.value = NoSelection
+            self.value = None
             return
             
-        self.disabled = False
-        self._value = self.check_options(options, self._default_value)
+        self.disabled = len(options)==1
+        self._value = self.check_options([(o,o) for o in options], self._default_value)
+                
         self.set_options(options)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         self.post_message(self.DAQConfigurationSelected(event.value))
 
     def set_options(self, options: List[str]):
-        options = [(m, m) for m in options]
+        options = [(str(m.name), m) for m in options]
         super().set_options(options)
 
     class DAQConfigurationSelected(Message):
@@ -186,15 +204,15 @@ class FilePanelWidget(Static):
     
         if app_controller.use_local:
             self._management_interface = LocalManagementInterface(self._app_controller)
-            self._daq_version_message = "Local DAQ Repository"
+            self._daq_version_message = "Select database in local DAQ Repository"
         else:
             self._management_interface = RemoteManagementInterface(self._app_controller)
-            self._daq_version_message = "Remote DAQ Repository"
+            self._daq_version_message = "Select DAQ configuration version"
     
     def compose(self):
         with Grid(id="file_io_panel_grid"):
-            yield SelectDAQVersion(self._management_interface, classes="file_select", id="daq_version_select")
-            yield SelectDAQConfiguration(self._management_interface, classes="file_select", id="daq_configuration_select")
+            yield SelectDAQVersion(self._management_interface, prompt=f"{self._daq_version_message}", classes="file_select", id="daq_version_select")
+            yield SelectDAQConfiguration(self._management_interface, prompt="Select DAQ configuration", classes="file_select", id="daq_configuration_select")
             yield Button("Open", id="open_file_button", disabled=True, classes="file_io_button")
             yield Static("[bold medium_violet_red]   No file loaded\n  ", id="file_io_panel_message")
 

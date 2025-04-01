@@ -99,7 +99,7 @@ class LocalManagementInterface(ManagementInterface):
         Initialize the local management interface
         """
         super().__init__(app_controller)
-                
+             
         self.config_directories = [Path(p) for p in  f"{self.app_controller.interface_config.download_directory}".split(":")]
 
     def get_daq_versions(self) -> list[Path]:
@@ -117,3 +117,4 @@ class LocalManagementInterface(ManagementInterface):
         
         return ConfigPathReader(str(self.app_controller.interface_config.default_config),
                                 str(self.app_controller.interface_config.session_name))(self._daq_version)
+

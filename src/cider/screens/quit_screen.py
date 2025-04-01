@@ -4,10 +4,7 @@ from textual.screen import Screen
 import logging
 import os
 from pathlib import Path
-from functools import partial
 from cider.interfaces.controller.application_controller import ShifterInterfaceState
-
-from cider.interfaces.controller.config_wrapper import ConfigurationWrapper
 
 
 class QuitScreen(Screen):
