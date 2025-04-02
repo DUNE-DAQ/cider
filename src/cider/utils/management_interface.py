@@ -37,6 +37,13 @@ class ManagementInterface(ABC):
         """
         self._daq_version = daq_version
 
+    @property
+    def daq_version(self) -> str:
+        """
+        Get the DAQ version
+        """
+        return self._daq_version
+
     def open_file(self, file_path: Path) -> ConfigurationWrapper:
         self.file_name = file_path
         return ConfigurationWrapper(f"{file_path}")

@@ -41,13 +41,12 @@ class DAQSelectMenu(Select):
 
         # Check if the value is in the options
         # Disable the select if there's only one option
-        if len(options) == 1:
-            value = options[0][1]
-            disabled = True
-            allow_blank = False
-            prompt = None
-
-        value = self.check_options(options, value)
+        # if len(options) == 1:
+        value = options[0][1]
+        #     disabled = True
+        #     # allow_blank = False
+        # else:
+        #     value = self.check_options(options, value)
 
         super().__init__(
             options,
@@ -62,6 +61,8 @@ class DAQSelectMenu(Select):
         )
 
         self._management_interface = management_interface
+        logging.info(f"Select initialized with value: {self._value}")
+
 
     @classmethod
     def check_options(
@@ -75,7 +76,7 @@ class DAQSelectMenu(Select):
         if default in [i[0] for i in options]:
             return default
 
-        return Select.BLANK
+        return default
 
 
 class SelectDAQVersion(DAQSelectMenu):
@@ -98,7 +99,6 @@ class SelectDAQVersion(DAQSelectMenu):
     ):
 
         options_list = management_interface.get_daq_versions()
-
         # We need to correctly format options
         options = [(str(Path(o).name), o) for o in options_list]
 
@@ -124,14 +124,15 @@ class SelectDAQVersion(DAQSelectMenu):
             self._management_interface.set_version(self.value)
 
     def on_select_changed(self, event: Select.Changed) -> None:
+        if self._management_interface.daq_version == event.value:
+            logging.info("DAQ version already selected")
+            return
+        
         self._management_interface.set_version(event.value)
-        self.post_message(self.DAQVersionSelected(event.value))
+        self.post_message(self.DAQVersionSelected())
 
     class DAQVersionSelected(Message):
-        def __init__(self, version: str):
-            super().__init__()
-            self.version = version
-
+        ...
 
 class SelectDAQConfiguration(DAQSelectMenu):
     """
@@ -159,8 +160,6 @@ class SelectDAQConfiguration(DAQSelectMenu):
         if len(management_interface.get_daq_versions()) == 1:
             management_interface.set_version(management_interface.get_daq_versions()[0])
             disabled = True
-            allow_blank = False
-            prompt = None
             options = [
                 (str(Path(m).name), m)
                 for m in management_interface.get_configurations()
@@ -179,6 +178,8 @@ class SelectDAQConfiguration(DAQSelectMenu):
         else:
             options = management_interface.get_configurations()
 
+        self._current_version = management_interface.daq_version
+
         if not options:
             disabled = True
 
@@ -195,8 +196,11 @@ class SelectDAQConfiguration(DAQSelectMenu):
             tooltip=tooltip,
         )
 
-    def update_version(self, version: str):
-        self._management_interface.set_version(version)
+    def update_version(self):
+        if self._management_interface.daq_version == self._current_version:
+            logging.info(f"DAQ version already selected {self._current_version}")
+            return
+        
         options = self._management_interface.get_configurations()
 
         if not options:
@@ -207,12 +211,14 @@ class SelectDAQConfiguration(DAQSelectMenu):
 
         self.disabled = False
         self._value = self.check_options([(o, o) for o in options], self._default_value)
+        
         self.set_options(options)
+            
 
     def on_select_changed(self, event: Select.Changed) -> None:
         self.post_message(self.DAQConfigurationSelected(event.value))
 
-    def set_options(self, options: List[str]):
+    def set_options(self, options: List[str]):        
         options = [(str(Path(m).name), m) for m in options]
         super().set_options(options)
 
@@ -257,9 +263,18 @@ class FilePanelWidget(Static):
             self._daq_version_message = "Select DAQ configuration version"
 
     def compose(self):
-        
         default_config = self._app_controller.interface_config.default_config
         default_version = self._app_controller.interface_config.default_version
+        
+        s = SelectDAQConfiguration(
+                self._management_interface,
+                prompt="Select DAQ configuration",
+                classes="file_select",
+                id="daq_configuration_select",
+                value=default_config,
+                default_version=default_version,
+            )
+
         
         with Grid(id="file_io_panel_grid"):
             yield SelectDAQVersion(
@@ -269,14 +284,7 @@ class FilePanelWidget(Static):
                 id="daq_version_select",
                 value=default_version,
             )
-            yield SelectDAQConfiguration(
-                self._management_interface,
-                prompt="Select DAQ configuration",
-                classes="file_select",
-                id="daq_configuration_select",
-                value=default_config,
-                default_version=default_version,
-            )
+            yield s
             yield Button(
                 "Open", id="open_file_button", disabled=True, classes="file_io_button"
             )
@@ -290,10 +298,10 @@ class FilePanelWidget(Static):
         return self._management_interface
 
     @on(SelectDAQVersion.DAQVersionSelected)
-    def handle_daq_version_selected(
-        self, event: SelectDAQVersion.DAQVersionSelected
-    ) -> None:
-        self.query_one("#daq_configuration_select").update_version(event.version)
+    def handle_daq_version_selected(self) -> None:
+        logging.info('selected version')
+        
+        self.query_one("#daq_configuration_select").update_version()
 
     @on(SelectDAQConfiguration.DAQConfigurationSelected)
     def handle_daq_configuration_selected(
