@@ -15,7 +15,7 @@ ShifterViewScreen {
 
 /* === File IO Panel === */
 #file_io_panel_grid {
-    grid-size: 5 3;
+    grid-size: 5 2;
     width: 100%;
     column-span: 5;
     content-align: center middle;
@@ -25,7 +25,6 @@ ShifterViewScreen {
 #file_io_panel_message{
     margin-top: 1;
     column-span: 5
-    row-se
 }
 
 .file_select {
