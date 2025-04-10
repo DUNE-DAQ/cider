@@ -1,3 +1,5 @@
+# CURRENTLY THIS IS DEPRECATED! FOR SHIFTER INTERFACE FEATURES PLEASE USE https://github.com/DUNE-DAQ/runconf-ui 
+
 # Shifter Interface
 
 ## Overview
